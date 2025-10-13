@@ -45,6 +45,18 @@ export class Artwork {
     group.add(frame);
     group.add(image);
     
+    // Add userData to all child meshes for click detection
+    frame.userData = {
+      titulo: this.titulo,
+      descripcion: this.descripcion,
+      imgSrc: this.imgSrc
+    };
+    image.userData = {
+      titulo: this.titulo,
+      descripcion: this.descripcion,
+      imgSrc: this.imgSrc
+    };
+    
     // Position the entire group
     group.position.set(4.95, 2.2, this.z);
     group.rotation.y = -Math.PI/2;
