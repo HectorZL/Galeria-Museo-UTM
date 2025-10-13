@@ -116,24 +116,33 @@ export class App {
       const deltaTime = 0.016; // Approximate 60fps delta time
       const moveSpeed = speed * deltaTime;
 
-      if (this.keys['KeyW']) this.controls.moveForward(moveSpeed);
-      if (this.keys['KeyS']) this.controls.moveForward(-moveSpeed);
-      if (this.keys['KeyA']) this.controls.moveRight(-moveSpeed);
-      if (this.keys['KeyD']) this.controls.moveRight(moveSpeed);
+      // Movement controls with direct position manipulation for better control
+      const camera = this.controls.getObject();
+      const direction = new THREE.Vector3();
+      const moveX = this.keys['KeyA'] ? 1 : (this.keys['KeyD'] ? -1 : 0);
+      const moveZ = this.keys['KeyW'] ? 1 : (this.keys['KeyS'] ? -1 : 0);
 
-      // Limit movement within gallery bounds with smoother boundaries
+      // Get camera forward and right vectors
+      camera.getWorldDirection(direction);
+      const forward = new THREE.Vector3(direction.x, 0, direction.z).normalize();
+      const right = new THREE.Vector3(direction.z, 0, -direction.x).normalize();
+
+      // Calculate movement vector
+      const moveVector = new THREE.Vector3();
+      moveVector.add(forward.multiplyScalar(moveZ * moveSpeed));
+      moveVector.add(right.multiplyScalar(moveX * moveSpeed));
+
+      // Apply movement
+      if (moveVector.length() > 0) {
+        camera.position.add(moveVector);
+      }
+
+      // Limit movement within gallery bounds
       const halfW = 4.6; // Slightly less than wall position
       const halfL = 45;  // Half of gallery length
-      const camera = this.controls.getObject();
-
-      // Smooth boundary checking with clamping
       camera.position.x = Math.max(-halfW, Math.min(halfW, camera.position.x));
       camera.position.z = Math.max(-halfL, Math.min(halfL, camera.position.z));
       camera.position.y = 1.6; // Fixed height
-
-      // Add smooth rotation with mouse movement
-      if (this.keys['KeyQ']) this.camera.rotation.y -= 0.02; // Rotate left
-      if (this.keys['KeyE']) this.camera.rotation.y += 0.02; // Rotate right
     }
   }
 }
