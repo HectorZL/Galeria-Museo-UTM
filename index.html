@@ -46,11 +46,18 @@
   </script>
 
   <script type="module">
-    import { App } from './src/App.js';
+    // Usar ruta absoluta para asegurar que se encuentre el módulo
+    import { App } from '/src/App.js';
 
-    // Iniciar la aplicación cuando el DOM esté listo
-    document.addEventListener('DOMContentLoaded', () => {
-      new App();
+    // Inicializar la aplicación cuando el DOM esté listo
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const app = new App();
+        await app.init();
+      } catch (error) {
+        console.error('Error al inicializar la aplicación:', error);
+        document.getElementById('msg').textContent = 'Error al cargar la aplicación. Por favor, recarga la página.';
+      }
     });
   </script>
 </body>

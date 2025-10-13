@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -9,18 +10,38 @@ const __dirname = dirname(__filename);
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Configurar cabeceras para permitir módulos ES
+// Configuración de seguridad
 app.use((req, res, next) => {
-  if (req.url.endsWith('.js')) {
-    res.set('Content-Type', 'application/javascript');
-  }
+  // Configuración de cabeceras de seguridad
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
   next();
 });
 
-// Servir archivos estáticos
+// Middleware para servir archivos estáticos
 app.use(express.static(__dirname, {
-  extensions: ['html', 'js', 'css', 'json', 'png', 'jpg', 'jpeg', 'gif']
+  setHeaders: (res, path) => {
+    if (path.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript');
+    } else if (path.endsWith('.css')) {
+      res.setHeader('Content-Type', 'text/css');
+    }
+  }
 }));
+
+// Ruta para servir archivos JavaScript como módulos
+app.get('*.js', (req, res, next) => {
+  const filePath = path.join(__dirname, req.path);
+  
+  // Verificar si el archivo existe
+  if (fs.existsSync(filePath)) {
+    res.setHeader('Content-Type', 'application/javascript');
+    res.sendFile(filePath);
+  } else {
+    next();
+  }
+});
 
 // Ruta principal - servir index.html
 app.get('*', (req, res) => {
