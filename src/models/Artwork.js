@@ -10,7 +10,20 @@ export class Artwork {
   }
 
   createArtwork() {
-    // Crear textura de la imagen
+    const group = new THREE.Group();
+    
+    // Create frame
+    const frameWidth = 2.4;  // Increased width to accommodate frame
+    const frameHeight = 3.0; // Increased height to accommodate frame
+    const frameDepth = 0.1;
+    const frameGeometry = new THREE.BoxGeometry(frameWidth, frameHeight, frameDepth);
+    const frameMaterial = new THREE.MeshPhongMaterial({
+      color: 0x8B4513,  // Brown wood color
+      side: THREE.DoubleSide
+    });
+    const frame = new THREE.Mesh(frameGeometry, frameMaterial);
+    
+    // Create artwork image
     const textureLoader = new THREE.TextureLoader();
     const texture = textureLoader.load(this.imgSrc, (texture) => {
       texture.encoding = THREE.sRGBEncoding;
@@ -21,20 +34,30 @@ export class Artwork {
       side: THREE.DoubleSide
     });
 
-    const geometry = new THREE.PlaneGeometry(2.2, 2.75);
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.set(4.95, 2.2, this.z);
-    mesh.rotation.y = -Math.PI/2;
+    // Slightly smaller than frame
+    const imageWidth = frameWidth * 0.9;
+    const imageHeight = frameHeight * 0.9;
+    const geometry = new THREE.PlaneGeometry(imageWidth, imageHeight);
+    const image = new THREE.Mesh(geometry, material);
+    image.position.z = 0.051; // Slightly in front of the frame
+    
+    // Add frame and image to group
+    group.add(frame);
+    group.add(image);
+    
+    // Position the entire group
+    group.position.set(4.95, 2.2, this.z);
+    group.rotation.y = -Math.PI/2;
 
-    // Añadir interactividad
-    mesh.userData = {
+    // Add interactivity to the group
+    group.userData = {
       titulo: this.titulo,
       descripcion: this.descripcion,
       imgSrc: this.imgSrc
     };
-    mesh.cursor = 'pointer';
+    group.cursor = 'pointer';
 
-    return mesh;
+    return group;
   }
 
   createTitle() {

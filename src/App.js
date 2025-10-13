@@ -18,17 +18,18 @@ export class App {
     this.gallery = new GalleryScene();
     this.scene = this.gallery.getScene();
     
-    // Add artworks to the gallery
+    // Add artworks to the gallery with proper spacing
+    const artworkSpacing = 6; // Increased spacing between artworks
     const artworks = [
       { 
         titulo: 'Obra 1 — "Inicio"', 
-        z: -20, 
+        z: -artworkSpacing, // First artwork at -6
         imgSrc: 'images/1.JPG',
         descripcion: 'Descripción detallada de la obra 1. Haga clic fuera de la imagen para volver.'
       },
       { 
         titulo: 'Obra 2 — "Centro"', 
-        z: 0, 
+        z: artworkSpacing, // Second artwork at +6
         imgSrc: 'images/2.JPG',
         descripcion: 'Descripción detallada de la obra 2. Haga clic fuera de la imagen para volver.'
       },
