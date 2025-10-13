@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Galería de Arte 3D</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #fff;
+    }
+    canvas {
+      display: block;
+    }
+    #msg {
+      position: fixed;
+      bottom: 20px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font: 14px/1.2 system-ui;
+      color: #444;
+      pointer-events: none;
+      background: rgba(255, 255, 255, 0.7);
+      padding: 10px;
+      backdrop-filter: blur(5px);
+    }
+  </style>
+</head>
+<body>
+  <div id="msg">Haz clic para interactuar (WASD para moverte, Q/E para girar, Esc para salir)</div>
+
+  <!-- Polyfill para import maps en navegadores antiguos -->
+  <script async src="https://unpkg.com/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
+
+  <!-- Import map: mapea "three" y "three/addons/" a las rutas correctas -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.149.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.149.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import { App } from './src/App.js';
+
+    // Iniciar la aplicación cuando el DOM esté listo
+    document.addEventListener('DOMContentLoaded', () => {
+      new App();
+    });
+  </script>
+</body>
+</html>
