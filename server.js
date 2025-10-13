@@ -19,27 +19,42 @@ app.use((req, res, next) => {
   next();
 });
 
-// Middleware para servir archivos estáticos
-app.use(express.static(__dirname, {
-  setHeaders: (res, path) => {
-    if (path.endsWith('.js')) {
-      res.setHeader('Content-Type', 'application/javascript');
-    } else if (path.endsWith('.css')) {
-      res.setHeader('Content-Type', 'text/css');
-    }
-  }
-}));
+// Servir archivos estáticos desde la raíz
+app.use(express.static(__dirname));
 
-// Ruta para servir archivos JavaScript como módulos
-app.get('*.js', (req, res, next) => {
-  const filePath = path.join(__dirname, req.path);
+// Configurar MIME types para archivos estáticos
+app.use((req, res, next) => {
+  const ext = path.extname(req.path).toLowerCase();
+  const mimeTypes = {
+    '.js': 'application/javascript',
+    '.css': 'text/css',
+    '.json': 'application/json',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.svg': 'image/svg+xml',
+    '.html': 'text/html'
+  };
+
+  if (mimeTypes[ext]) {
+    res.setHeader('Content-Type', mimeTypes[ext]);
+  }
+  next();
+});
+
+// Ruta específica para imágenes
+app.get('/images/:imageName', (req, res) => {
+  const imageName = req.params.imageName;
+  const imagePath = path.join(__dirname, 'images', imageName);
   
-  // Verificar si el archivo existe
-  if (fs.existsSync(filePath)) {
-    res.setHeader('Content-Type', 'application/javascript');
-    res.sendFile(filePath);
+  if (fs.existsSync(imagePath)) {
+    const ext = path.extname(imageName).toLowerCase().substring(1);
+    const mimeType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+    res.setHeader('Content-Type', mimeType);
+    res.sendFile(imagePath);
   } else {
-    next();
+    res.status(404).send('Imagen no encontrada');
   }
 });
 
