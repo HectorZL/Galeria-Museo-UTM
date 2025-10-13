@@ -1,31 +1,43 @@
-const express = require('express');
-const path = require('path');
-const app = express();
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
-// Usar el puerto de Vercel o 3000 por defecto
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const app = express();
 const port = process.env.PORT || 3000;
 
-// Middleware para servir archivos estáticos
-app.use(express.static(__dirname));
-app.use('/three', express.static(path.join(__dirname, 'node_modules/three')));
+// Configurar cabeceras para permitir módulos ES
+app.use((req, res, next) => {
+  if (req.url.endsWith('.js')) {
+    res.set('Content-Type', 'application/javascript');
+  }
+  next();
+});
 
-// Ruta principal
-app.get('/', (_req, res) => {
+// Servir archivos estáticos
+app.use(express.static(__dirname, {
+  extensions: ['html', 'js', 'css', 'json', 'png', 'jpg', 'jpeg', 'gif']
+}));
+
+// Ruta principal - servir index.html
+app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // Manejador de errores
-app.use((err, _req, res, _next) => {
-  console.error(err.stack);
-  res.status(500).send('¡Algo salió mal!');
+app.use((err, req, res, next) => {
+  console.error('Error:', err.stack);
+  res.status(500).send('Algo salió mal en el servidor');
 });
 
 // Iniciar el servidor solo si no estamos en Vercel
 if (process.env.VERCEL !== '1') {
   app.listen(port, () => {
-    console.log(`Servidor en http://localhost:${port}`);
+    console.log(`Servidor ejecutándose en http://localhost:${port}`);
   });
 }
 
-// Exportar el servidor para Vercel
 export default app;
