@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { GalleryScene } from './scenes/GalleryScene.js';
 import { Modal } from './utils/Modal.js';
+import { loadObras } from '../js/lib/obras.js';
+import { mountObraModal, showObraModal } from '../js/lib/modal-obra.js';
 
 export class App {
   constructor() {
@@ -14,26 +16,43 @@ export class App {
     this.animate();
   }
 
-  initScene() {
+  async initScene() {
     this.gallery = new GalleryScene();
     this.scene = this.gallery.getScene();
-    
+
+    // Load obras data from JSON
+    try {
+      const obrasData = await loadObras();
+      this.obras = obrasData.list;
+    } catch (error) {
+      console.error('Error loading obras:', error);
+      // Fallback to hardcoded data if JSON fails
+      this.obras = [
+        {
+          titulo: 'Obra 1 — "Inicio"',
+          z: -6,
+          imagen: 'images/1.JPG',
+          descripcion: 'Descripción detallada de la obra 1.'
+        },
+        {
+          titulo: 'Obra 2 — "Centro"',
+          z: 6,
+          imagen: 'images/2.JPG',
+          descripcion: 'Descripción detallada de la obra 2.'
+        },
+      ];
+    }
+
     // Add artworks to the gallery with proper spacing
-    const artworkSpacing = 6; // Increased spacing between artworks
-    const artworks = [
-      { 
-        titulo: 'Obra 1 — "Inicio"', 
-        z: -artworkSpacing, // First artwork at -6
-        imgSrc: 'images/1.JPG',
-        descripcion: 'Descripción detallada de la obra 1. Haga clic fuera de la imagen para volver.'
-      },
-      { 
-        titulo: 'Obra 2 — "Centro"', 
-        z: artworkSpacing, // Second artwork at +6
-        imgSrc: 'images/2.JPG',
-        descripcion: 'Descripción detallada de la obra 2. Haga clic fuera de la imagen para volver.'
-      },
-    ];
+    const artworkSpacing = 6;
+    const artworks = this.obras.map((obra, index) => ({
+      titulo: `${obra.id} — "${obra.titulo}"`,
+      z: -artworkSpacing + (index * artworkSpacing),
+      imgSrc: obra.imagen,
+      descripcion: obra.descripcion,
+      // Store additional data for the modal
+      obraData: obra
+    }));
 
     this.artworks = [];
     artworks.forEach(artwork => {
@@ -63,9 +82,13 @@ export class App {
   }
 
   initModal() {
-    this.modal = new Modal();
-    this.modal.onClick(() => {
-      this.modal.hide();
+    // Initialize the new modal system
+    mountObraModal();
+
+    // Keep old modal as fallback
+    this.oldModal = new Modal();
+    this.oldModal.onClick(() => {
+      this.oldModal.hide();
       this.controls.lock();
     });
   }
@@ -83,16 +106,22 @@ export class App {
     if (this.controls.isLocked) {
       this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
       this.mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
-      
+
       this.raycaster.setFromCamera(this.mouse, this.camera);
-      
+
       // Check all objects in the scene for intersection
       const intersects = this.raycaster.intersectObjects(this.scene.children, true);
-      
+
       if (intersects.length > 0) {
         const object = intersects[0].object;
         if (object.userData.imgSrc) {
-          this.modal.show(object.userData);
+          // Try to use new modal system first
+          if (object.userData.obraData) {
+            showObraModal(object.userData.obraData);
+          } else {
+            // Fallback to old modal system
+            this.oldModal.show(object.userData);
+          }
           this.controls.unlock();
         }
       }
