@@ -30,7 +30,7 @@
   </style>
 </head>
 <body>
-  <div id="msg">Haz clic para interactuar (WASD para moverte, Q/E para girar, Esc para salir)</div>
+  <div id="msg">Haz clic para interactuar (WASD para moverte, ESC para salir del modo pointer lock)</div>
 
   <!-- Polyfill para import maps en navegadores antiguos -->
   <script async src="https://unpkg.com/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
@@ -53,7 +53,7 @@
     document.addEventListener('DOMContentLoaded', async () => {
       try {
         const app = new App();
-        await app.init();
+        // La aplicación se inicializa automáticamente en el constructor
       } catch (error) {
         console.error('Error al inicializar la aplicación:', error);
         document.getElementById('msg').textContent = 'Error al cargar la aplicación. Por favor, recarga la página.';
