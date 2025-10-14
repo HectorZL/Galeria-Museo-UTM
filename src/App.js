@@ -62,7 +62,7 @@ export class App {
 
   initCamera() {
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    this.camera.position.set(0, 1.6, 20);
+    this.camera.position.set(0, 1.6, 0); // Start in the center of the gallery
   }
 
   initRenderer() {
@@ -75,10 +75,31 @@ export class App {
   initControls() {
     this.controls = new PointerLockControls(this.camera, document.body);
     document.body.addEventListener('click', () => this.controls.lock());
-    
-    this.keys = {};
-    window.addEventListener('keydown', e => this.keys[e.code] = true);
-    window.addEventListener('keyup', e => this.keys[e.code] = false);
+
+    this.keys = {
+      w: false,
+      s: false,
+      a: false,
+      d: false
+    };
+
+    document.addEventListener('keydown', (e) => {
+      switch(e.key.toLowerCase()) {
+        case 'w': this.keys.w = true; break;
+        case 's': this.keys.s = true; break;
+        case 'a': this.keys.a = true; break;
+        case 'd': this.keys.d = true; break;
+      }
+    });
+
+    document.addEventListener('keyup', (e) => {
+      switch(e.key.toLowerCase()) {
+        case 'w': this.keys.w = false; break;
+        case 's': this.keys.s = false; break;
+        case 'a': this.keys.a = false; break;
+        case 'd': this.keys.d = false; break;
+      }
+    });
   }
 
   initModal() {
@@ -97,9 +118,99 @@ export class App {
     // Raycaster for detecting clicks on artworks
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
-    
+
+    // Mouse move listener for hover effects
+    window.addEventListener('mousemove', (event) => this.onDocumentMouseMove(event));
     window.addEventListener('click', (event) => this.onDocumentClick(event));
     window.addEventListener('resize', () => this.onWindowResize());
+
+    // Store current hovered object for cursor changes
+    this.hoveredObject = null;
+  }
+
+  onDocumentMouseMove(event) {
+    if (!this.controls.isLocked) {
+      this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      this.mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+
+      this.raycaster.setFromCamera(this.mouse, this.camera);
+
+      // Check all objects in the scene for intersection
+      const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+
+      // Reset cursor for all objects first
+      this.scene.traverse((obj) => {
+        if (obj.userData && obj.userData.isArtwork) {
+          obj.material.emissive.setHex(0x000000);
+        }
+      });
+
+      if (intersects.length > 0) {
+        const object = intersects[0].object;
+        if (object.userData && object.userData.isArtwork) {
+          // Highlight the hovered artwork
+          object.material.emissive.setHex(0x333333);
+          document.body.style.cursor = 'pointer';
+          this.hoveredObject = object;
+        } else {
+          document.body.style.cursor = 'auto';
+          this.hoveredObject = null;
+        }
+      } else {
+        document.body.style.cursor = 'auto';
+        this.hoveredObject = null;
+      }
+    }
+  }
+
+  onWindowResize() {
+    this.camera.aspect = window.innerWidth / window.innerHeight;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+
+  animate() {
+    requestAnimationFrame(() => this.animate());
+    this.update();
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  update() {
+    if (this.controls.isLocked) {
+      const speed = 5; // Increased speed for better responsiveness
+      const deltaTime = 0.016; // Approximate 60fps delta time
+      const moveSpeed = speed * deltaTime;
+
+      // Movement controls with direct position manipulation for better control
+      const camera = this.controls.getObject();
+      const direction = new THREE.Vector3();
+
+      // Get input - corrected for standard WASD movement
+      const moveX = (this.keys.a ? 1 : 0) - (this.keys.d ? 1 : 0);
+      const moveZ = (this.keys.w ? 1 : 0) - (this.keys.s ? 1 : 0);
+
+      // Get camera forward and right vectors
+      camera.getWorldDirection(direction);
+      const forward = new THREE.Vector3(direction.x, 0, direction.z).normalize();
+      const right = new THREE.Vector3(direction.z, 0, -direction.x).normalize();
+
+      // Calculate movement vector
+      const moveVector = new THREE.Vector3();
+      moveVector.add(forward.multiplyScalar(moveZ * moveSpeed));
+      moveVector.add(right.multiplyScalar(moveX * moveSpeed));
+
+      // Apply movement
+      if (Math.abs(moveX) > 0 || Math.abs(moveZ) > 0) {
+        camera.position.add(moveVector);
+      }
+
+      // Limit movement within gallery bounds
+      const halfW = 4.6; // Slightly less than wall position
+      const halfL = 60;  // Increased gallery length for better movement
+      camera.position.x = Math.max(-halfW, Math.min(halfW, camera.position.x));
+      camera.position.z = Math.max(-halfL, Math.min(halfL, camera.position.z));
+      camera.position.y = 1.6; // Fixed height
+    }
   }
 
   onDocumentClick(event) {
@@ -125,54 +236,6 @@ export class App {
           this.controls.unlock();
         }
       }
-    }
-  }
-
-  onWindowResize() {
-    this.camera.aspect = window.innerWidth / window.innerHeight;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-  }
-
-  animate() {
-    requestAnimationFrame(() => this.animate());
-    this.update();
-    this.renderer.render(this.scene, this.camera);
-  }
-
-  update() {
-    if (this.controls.isLocked) {
-      const speed = 2; // Increased speed for better responsiveness
-      const deltaTime = 0.016; // Approximate 60fps delta time
-      const moveSpeed = speed * deltaTime;
-
-      // Movement controls with direct position manipulation for better control
-      const camera = this.controls.getObject();
-      const direction = new THREE.Vector3();
-      const moveX = this.keys['KeyA'] ? 1 : (this.keys['KeyD'] ? -1 : 0);
-      const moveZ = this.keys['KeyW'] ? 1 : (this.keys['KeyS'] ? -1 : 0);
-
-      // Get camera forward and right vectors
-      camera.getWorldDirection(direction);
-      const forward = new THREE.Vector3(direction.x, 0, direction.z).normalize();
-      const right = new THREE.Vector3(direction.z, 0, -direction.x).normalize();
-
-      // Calculate movement vector
-      const moveVector = new THREE.Vector3();
-      moveVector.add(forward.multiplyScalar(moveZ * moveSpeed));
-      moveVector.add(right.multiplyScalar(moveX * moveSpeed));
-
-      // Apply movement
-      if (moveVector.length() > 0) {
-        camera.position.add(moveVector);
-      }
-
-      // Limit movement within gallery bounds
-      const halfW = 4.6; // Slightly less than wall position
-      const halfL = 45;  // Half of gallery length
-      camera.position.x = Math.max(-halfW, Math.min(halfW, camera.position.x));
-      camera.position.z = Math.max(-halfL, Math.min(halfL, camera.position.z));
-      camera.position.y = 1.6; // Fixed height
     }
   }
 }

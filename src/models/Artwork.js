@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 
 export class Artwork {
-  constructor({ titulo, z, imgSrc, descripcion = '' }) {
+  constructor({ titulo, z, imgSrc, descripcion = '', obraData = null }) {
     this.titulo = titulo;
     this.z = z;
     this.imgSrc = imgSrc;
     this.descripcion = descripcion;
+    this.obraData = obraData; // Store full obra data for modal
     this.mesh = this.createArtwork();
   }
 
@@ -49,12 +50,16 @@ export class Artwork {
     frame.userData = {
       titulo: this.titulo,
       descripcion: this.descripcion,
-      imgSrc: this.imgSrc
+      imgSrc: this.imgSrc,
+      isArtwork: true,
+      obraData: this.obraData
     };
     image.userData = {
       titulo: this.titulo,
       descripcion: this.descripcion,
-      imgSrc: this.imgSrc
+      imgSrc: this.imgSrc,
+      isArtwork: true,
+      obraData: this.obraData
     };
     
     // Position the entire group
@@ -65,7 +70,9 @@ export class Artwork {
     group.userData = {
       titulo: this.titulo,
       descripcion: this.descripcion,
-      imgSrc: this.imgSrc
+      imgSrc: this.imgSrc,
+      isArtwork: true,
+      obraData: this.obraData
     };
     group.cursor = 'pointer';
 
