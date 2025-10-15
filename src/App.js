@@ -271,6 +271,11 @@ export class App {
 
         if (object.userData.imgSrc) {
           console.log('Has imgSrc, checking for obraData...');
+          // Load high-res texture immediately for clicked artwork
+          const artwork = this.artworks.find(art => art.imgSrc === object.userData.imgSrc);
+          if (artwork) {
+            artwork.loadHighResTexture();
+          }
           // Try to use new modal system first
           if (object.userData.obraData) {
             console.log('Has obraData, showing new modal with:', object.userData.obraData);
@@ -311,12 +316,9 @@ export class App {
   }
 
   checkArtworkDistances(camera) {
-    const thresholdDistance = 10; // Distance threshold to load high-res texture
     this.artworks.forEach(artwork => {
       const distance = camera.position.distanceTo(artwork.mesh.position);
-      if (distance < thresholdDistance && !artwork.highResLoaded) {
-        artwork.loadHighResTexture();
-      }
+      artwork.updateQuality(distance);
     });
   }
 }

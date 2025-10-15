@@ -7,7 +7,10 @@ export class Artwork {
     this.imgSrc = imgSrc;
     this.descripcion = descripcion;
     this.obraData = obraData; // Store full obra data for modal
-    this.highResLoaded = false; // Track if high-res texture is loaded
+    this.highResLoaded = false;
+    this.lowResLoaded = false;
+    this.currentQuality = 'low'; // 'low', 'medium', 'high'
+    this.fadeProgress = 0; // For smooth transitions
     this.mesh = this.createArtwork();
   }
 
@@ -27,10 +30,10 @@ export class Artwork {
     
     // Create artwork image
     const textureLoader = new THREE.TextureLoader();
-    // Create a blurred placeholder texture initially
-    const blurredTexture = this.createBlurredTexture();
+    // Initially load low-res texture for performance
+    this.loadLowResTexture();
     const material = new THREE.MeshBasicMaterial({
-      map: blurredTexture,
+      map: this.lowResTexture,
       side: THREE.DoubleSide
     });
 
@@ -188,15 +191,119 @@ export class Artwork {
   }
 
   loadHighResTexture() {
-    if (this.highResLoaded) return; // Already loaded
+    if (this.highResLoaded) return this.highResTexture; // Already loaded
 
     const textureLoader = new THREE.TextureLoader();
     const highResTexture = textureLoader.load(this.imgSrc, (texture) => {
       texture.encoding = THREE.sRGBEncoding;
       this.highResLoaded = true;
+      this.setHighResTexture(texture);
       // Update the material map to use high-res texture
-      this.mesh.children[1].material.map = highResTexture;
+      this.mesh.children[1].material.map = texture;
       this.mesh.children[1].material.needsUpdate = true;
     });
+    this.setHighResTexture(highResTexture);
+    return highResTexture;
+  }
+
+  loadLowResTexture() {
+    if (this.lowResLoaded) return this.lowResTexture; // Already loaded
+
+    const textureLoader = new THREE.TextureLoader();
+    // Create a 512x512 version by resizing the image
+    this.createLowResTexture().then(lowResTexture => {
+      this.lowResLoaded = true;
+      this.setLowResTexture(lowResTexture);
+      this.mesh.children[1].material.map = lowResTexture;
+      this.mesh.children[1].material.needsUpdate = true;
+    });
+    return this.lowResTexture;
+  }
+
+  createLowResTexture() {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 512;
+        canvas.height = 512;
+
+        // Maintain aspect ratio and center the image
+        const aspect = img.width / img.height;
+        let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+
+        if (aspect > 1) {
+          drawWidth = 512;
+          drawHeight = 512 / aspect;
+          offsetY = (512 - drawHeight) / 2;
+        } else {
+          drawWidth = 512 * aspect;
+          drawHeight = 512;
+          offsetX = (512 - drawWidth) / 2;
+        }
+
+        ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.encoding = THREE.sRGBEncoding;
+        resolve(texture);
+      };
+      img.src = this.imgSrc;
+    });
+  }
+
+  updateQuality(distance) {
+    let targetQuality = 'low';
+
+    if (distance < 5) {
+      targetQuality = 'high';
+    } else if (distance < 15) {
+      targetQuality = 'medium';
+    }
+
+    if (targetQuality !== this.currentQuality) {
+      this.fadeProgress = 0;
+      this.currentQuality = targetQuality;
+      this.startQualityTransition(targetQuality);
+    }
+  }
+
+  startQualityTransition(targetQuality) {
+    // For now, just switch immediately, but we can add fade logic here
+    switch (targetQuality) {
+      case 'high':
+        if (!this.highResLoaded) {
+          this.loadHighResTexture();
+        } else {
+          this.mesh.children[1].material.map = this.highResTexture;
+        }
+        break;
+      case 'medium':
+        // For medium, we could use a 1024x1024 version or the high-res with reduced quality
+        if (!this.highResLoaded) {
+          this.loadHighResTexture();
+        } else {
+          this.mesh.children[1].material.map = this.highResTexture;
+        }
+        break;
+      case 'low':
+        if (!this.lowResLoaded) {
+          this.loadLowResTexture();
+        } else {
+          this.mesh.children[1].material.map = this.lowResTexture;
+        }
+        break;
+    }
+    this.mesh.children[1].material.needsUpdate = true;
+  }
+
+  // Store references to textures for quick switching
+  setLowResTexture(texture) {
+    this.lowResTexture = texture;
+  }
+
+  setHighResTexture(texture) {
+    this.highResTexture = texture;
   }
 }
