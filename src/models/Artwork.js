@@ -7,6 +7,7 @@ export class Artwork {
     this.imgSrc = imgSrc;
     this.descripcion = descripcion;
     this.obraData = obraData; // Store full obra data for modal
+    this.highResLoaded = false; // Track if high-res texture is loaded
     this.mesh = this.createArtwork();
   }
 
@@ -26,12 +27,10 @@ export class Artwork {
     
     // Create artwork image
     const textureLoader = new THREE.TextureLoader();
-    const texture = textureLoader.load(this.imgSrc, (texture) => {
-      texture.encoding = THREE.sRGBEncoding;
-    });
-
+    // Create a blurred placeholder texture initially
+    const blurredTexture = this.createBlurredTexture();
     const material = new THREE.MeshBasicMaterial({
-      map: texture,
+      map: blurredTexture,
       side: THREE.DoubleSide
     });
 
@@ -166,5 +165,38 @@ export class Artwork {
 
   getObjects() {
     return [this.mesh, this.createTitle()];
+  }
+
+  createBlurredTexture() {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 128;
+    canvas.height = 128;
+
+    // Create a simple blurred placeholder (gray gradient)
+    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    gradient.addColorStop(0, '#cccccc');
+    gradient.addColorStop(1, '#aaaaaa');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Add some blur effect by drawing semi-transparent overlay
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    return new THREE.CanvasTexture(canvas);
+  }
+
+  loadHighResTexture() {
+    if (this.highResLoaded) return; // Already loaded
+
+    const textureLoader = new THREE.TextureLoader();
+    const highResTexture = textureLoader.load(this.imgSrc, (texture) => {
+      texture.encoding = THREE.sRGBEncoding;
+      this.highResLoaded = true;
+      // Update the material map to use high-res texture
+      this.mesh.children[1].material.map = highResTexture;
+      this.mesh.children[1].material.needsUpdate = true;
+    });
   }
 }

@@ -1,4 +1,5 @@
 // /js/modal-obra.js
+import { enableImageZoom, disableImageZoom } from './image-zoom.js';
 export function mountObraModal() {
 const root = document.createElement('div');
 root.id = 'obra-modal-root';
@@ -65,6 +66,9 @@ export function showObraModal(obra, callbacks = {}) {
   // Show modal by removing hidden class
   root.classList.remove('hidden');
 
+  // Enable image zoom
+  enableImageZoom();
+
   // Execute onOpen callback if provided
   if (callbacks.onOpen) {
     callbacks.onOpen();
@@ -76,6 +80,9 @@ export function hideObraModal(callbacks = {}) {
   const root = document.getElementById('obra-modal-root');
   if (!root) return;
   root.classList.add('hidden');
+
+  // Disable image zoom
+  disableImageZoom();
 
   // Execute onClose callback if provided
   if (callbacks.onClose) {

@@ -175,7 +175,7 @@ export class App {
             if (this.INTERSECTED._origHex === undefined) this.INTERSECTED._origHex = m.emissive.getHex();
             m.emissive.setHex(0x555555);
           });
-          document.body.style.cursor = 'pointer';
+          document.body.style.cursor = 'grab';
           this.hoveredObject = object;
         } else {
           document.body.style.cursor = 'auto';
@@ -235,6 +235,9 @@ export class App {
       camera.position.x = Math.max(-halfW, Math.min(halfW, camera.position.x));
       camera.position.z = Math.max(-halfL, Math.min(halfL, camera.position.z));
       camera.position.y = 1.6; // Fixed height
+
+      // Check distance to artworks and load high-res textures for nearby ones
+      this.checkArtworkDistances(camera);
     }
   }
 
@@ -291,5 +294,15 @@ export class App {
         console.log('No intersects found');
       }
     }
+  }
+
+  checkArtworkDistances(camera) {
+    const thresholdDistance = 10; // Distance threshold to load high-res texture
+    this.artworks.forEach(artwork => {
+      const distance = camera.position.distanceTo(artwork.mesh.position);
+      if (distance < thresholdDistance && !artwork.highResLoaded) {
+        artwork.loadHighResTexture();
+      }
+    });
   }
 }
