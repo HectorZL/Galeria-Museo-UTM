@@ -3,7 +3,7 @@ import { enableImageZoom, disableImageZoom } from './image-zoom.js';
 export function mountObraModal() {
 const root = document.createElement('div');
 root.id = 'obra-modal-root';
-root.className = 'fixed inset-0 hidden';
+root.className = 'fixed inset-0 hidden z-50';
 root.innerHTML = `
 <div class="absolute inset-0 bg-black/60" data-close></div>
 <div class="absolute inset-0 grid place-items-center p-4">
@@ -30,6 +30,9 @@ root.innerHTML = `
 `;
 document.body.appendChild(root);
 
+// Estado inicial
+window.__modalOpen = false;
+
 
 // cerrar por capa oscura o botón
 root.addEventListener('click', (e) => {
@@ -40,6 +43,30 @@ if (e.target.matches('[data-close]')) hideObraModal();
 // ESC para cerrar
 document.addEventListener('keydown', (e) => {
 if (e.key === 'Escape') hideObraModal();
+});
+
+
+// Trap focus within modal for accessibility
+root.addEventListener('keydown', (e) => {
+  if (e.key === 'Tab') {
+    const focusableElements = root.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    if (e.shiftKey) {
+      // Shift + Tab
+      if (document.activeElement === firstElement) {
+        e.preventDefault();
+        lastElement.focus();
+      }
+    } else {
+      // Tab
+      if (document.activeElement === lastElement) {
+        e.preventDefault();
+        firstElement.focus();
+      }
+    }
+  }
 });
 
 }
@@ -63,8 +90,17 @@ export function showObraModal(obra, callbacks = {}) {
   root.querySelector('#obra-tamano').textContent = obra.tamano || '—';
   root.querySelector('#obra-descripcion').textContent = obra.descripcion || '';
 
-  // Show modal by removing hidden class
+  // Show modal by removing hidden class and block body scroll
   root.classList.remove('hidden');
+  window.__modalOpen = true;
+  window.dispatchEvent(new CustomEvent('obra-modal-open'));
+  document.body.style.overflow = 'hidden';
+
+  // Focus on the close button for accessibility
+  const closeButton = root.querySelector('[data-close]');
+  if (closeButton) {
+    closeButton.focus();
+  }
 
   // Enable image zoom
   enableImageZoom();
@@ -80,6 +116,11 @@ export function hideObraModal(callbacks = {}) {
   const root = document.getElementById('obra-modal-root');
   if (!root) return;
   root.classList.add('hidden');
+  window.__modalOpen = false;
+  window.dispatchEvent(new CustomEvent('obra-modal-close'));
+
+  // Restore body scroll
+  document.body.style.overflow = 'auto';
 
   // Disable image zoom
   disableImageZoom();
@@ -87,5 +128,11 @@ export function hideObraModal(callbacks = {}) {
   // Execute onClose callback if provided
   if (callbacks.onClose) {
     callbacks.onClose();
+  }
+
+  // Restore focus to the Three.js canvas for interaction
+  const canvas = document.querySelector('canvas');
+  if (canvas) {
+    canvas.focus();
   }
 }

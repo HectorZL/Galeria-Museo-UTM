@@ -1,139 +1,111 @@
-// js/lib/image-zoom.js
-// Funcionalidad para zoom en imágenes dentro del modal
-
+// js/lib/image-zoom.js — robusto y sin NPEs
 let currentZoom = 1;
 let isDragging = false;
-let dragStartX = 0;
-let dragStartY = 0;
-let translateX = 0;
-let translateY = 0;
+let dragStartX = 0, dragStartY = 0;
+let translateX = 0, translateY = 0;
 let imgElement = null;
+let root = null;
 
-export function enableImageZoom() {
-  const modal = document.getElementById('obra-modal-root');
-  if (!modal) return;
-
-  imgElement = modal.querySelector('#obra-img');
+// Handlers nombrados para poder removerlos
+function onWheel(e) {
   if (!imgElement) return;
-
-  // Crear controles de zoom
-  const controls = document.createElement('div');
-  controls.id = 'zoom-controls';
-  controls.className = 'absolute top-4 right-4 flex space-x-2';
-  controls.innerHTML = `
-    <button id="zoom-in" class="bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors" title="Acercar">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>
-      </svg>
-    </button>
-    <button id="zoom-out" class="bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors" title="Alejar">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"></path>
-      </svg>
-    </button>
-    <button id="zoom-reset" class="bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors" title="Restablecer zoom">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-      </svg>
-    </button>
-  `;
-
-  // Añadir controles al modal
-  const modalContent = modal.querySelector('.absolute.inset-0.grid');
-  if (modalContent) {
-    modalContent.appendChild(controls);
-  }
-
-  // Hacer la imagen zoomable y arrastrable
-  imgElement.style.cursor = 'grab';
-  imgElement.style.transition = 'transform 0.2s ease';
-
-  // Eventos para controles
-  controls.querySelector('#zoom-in').addEventListener('click', () => zoomIn());
-  controls.querySelector('#zoom-out').addEventListener('click', () => zoomOut());
-  controls.querySelector('#zoom-reset').addEventListener('click', () => resetZoom());
-
-  // Eventos para zoom con rueda del mouse
-  imgElement.addEventListener('wheel', (e) => {
-    e.preventDefault();
-    if (e.deltaY < 0) {
-      zoomIn();
-    } else {
-      zoomOut();
-    }
-  });
-
-  // Eventos para arrastrar
-  imgElement.addEventListener('mousedown', (e) => {
-    if (currentZoom > 1) {
-      isDragging = true;
-      dragStartX = e.clientX - translateX;
-      dragStartY = e.clientY - translateY;
-      imgElement.style.cursor = 'grabbing';
-    }
-  });
-
-  document.addEventListener('mousemove', (e) => {
-    if (isDragging && currentZoom > 1) {
-      translateX = e.clientX - dragStartX;
-      translateY = e.clientY - dragStartY;
-      updateTransform();
-    }
-  });
-
-  document.addEventListener('mouseup', () => {
-    isDragging = false;
-    imgElement.style.cursor = currentZoom > 1 ? 'grab' : 'default';
-  });
-
-  // Prevenir arrastrar por defecto
-  imgElement.addEventListener('dragstart', (e) => e.preventDefault());
+  e.preventDefault();
+  const delta = Math.sign(e.deltaY) * -0.1;
+  currentZoom = Math.max(1, Math.min(6, currentZoom + delta));
+  imgElement.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentZoom})`;
 }
-
+function onMouseDown(e) {
+  if (!imgElement || currentZoom === 1) return;
+  isDragging = true;
+  dragStartX = e.clientX - translateX;
+  dragStartY = e.clientY - translateY;
+  imgElement.style.cursor = 'grabbing';
+}
+function onMouseMove(e) {
+  if (!imgElement || !isDragging) return;
+  translateX = e.clientX - dragStartX;
+  translateY = e.clientY - dragStartY;
+  imgElement.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentZoom})`;
+}
+function onMouseUp() {
+  if (!imgElement) return;
+  isDragging = false;
+  imgElement.style.cursor = currentZoom > 1 ? 'grab' : 'default';
+}
 function zoomIn() {
-  if (currentZoom < 3) { // Máximo zoom 3x
-    currentZoom += 0.25;
-    updateTransform();
-  }
+  if (!imgElement) return;
+  currentZoom = Math.min(6, currentZoom + 0.25);
+  imgElement.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentZoom})`;
+  imgElement.style.cursor = currentZoom > 1 ? 'grab' : 'default';
 }
-
 function zoomOut() {
-  if (currentZoom > 1) {
-    currentZoom -= 0.25;
-    updateTransform();
-  }
+  if (!imgElement) return;
+  currentZoom = Math.max(1, currentZoom - 0.25);
+  if (currentZoom === 1) { translateX = 0; translateY = 0; }
+  imgElement.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentZoom})`;
+  imgElement.style.cursor = currentZoom > 1 ? 'grab' : 'default';
 }
-
-function resetZoom() {
-  currentZoom = 1;
-  translateX = 0;
-  translateY = 0;
-  updateTransform();
+function zoomReset() {
+  if (!imgElement) return;
+  currentZoom = 1; translateX = 0; translateY = 0; isDragging = false;
+  imgElement.style.transform = 'none';
   imgElement.style.cursor = 'default';
 }
 
-function updateTransform() {
-  if (imgElement) {
-    imgElement.style.transform = `scale(${currentZoom}) translate(${translateX}px, ${translateY}px)`;
-    imgElement.style.cursor = currentZoom > 1 ? 'grab' : 'default';
+export function enableImageZoom() {
+  root = document.getElementById('obra-modal-root');
+  if (!root) return;
+  imgElement = root.querySelector('#obra-img');
+  if (!imgElement) return;
+
+  // Controles (se crean si no existen)
+  let ui = root.querySelector('[data-zoom-ui]');
+  if (!ui) {
+    const modalContent = root.querySelector('.absolute.inset-0.grid');
+    if (!modalContent) return;
+    ui = document.createElement('div');
+    ui.setAttribute('data-zoom-ui', 'true');
+    ui.className = 'pointer-events-none absolute inset-0';
+    ui.innerHTML = `
+      <div class="pointer-events-auto fixed bottom-4 right-4 grid gap-2">
+        <button id="zoom-in" class="p-2 rounded-lg bg-black/60 text-white" title="Acercar">+</button>
+        <button id="zoom-out" class="p-2 rounded-lg bg-black/60 text-white" title="Alejar">−</button>
+        <button id="zoom-reset" class="p-2 rounded-lg bg-black/60 text-white" title="Restablecer">○</button>
+      </div>`;
+    modalContent.appendChild(ui);
   }
+
+  // Listeners
+  imgElement.addEventListener('wheel', onWheel, { passive: false });
+  imgElement.addEventListener('mousedown', onMouseDown);
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseup', onMouseUp);
+  ui.querySelector('#zoom-in')?.addEventListener('click', zoomIn);
+  ui.querySelector('#zoom-out')?.addEventListener('click', zoomOut);
+  ui.querySelector('#zoom-reset')?.addEventListener('click', zoomReset);
 }
 
 export function disableImageZoom() {
-  const controls = document.getElementById('zoom-controls');
-  if (controls) {
-    controls.remove();
-  }
+  if (!root) { imgElement = null; return; }
+  const ui = root.querySelector('[data-zoom-ui]');
 
+  // Quitar listeners si el elemento aún existe
   if (imgElement) {
+    imgElement.removeEventListener('wheel', onWheel);
+    imgElement.removeEventListener('mousedown', onMouseDown);
+    window.removeEventListener('mousemove', onMouseMove);
+    window.removeEventListener('mouseup', onMouseUp);
     imgElement.style.transform = 'none';
     imgElement.style.cursor = 'default';
-    imgElement.style.transition = 'none';
   }
+  ui?.querySelector('#zoom-in')?.removeEventListener('click', zoomIn);
+  ui?.querySelector('#zoom-out')?.removeEventListener('click', zoomOut);
+  ui?.querySelector('#zoom-reset')?.removeEventListener('click', zoomReset);
 
+  // Reset de estado
   currentZoom = 1;
-  translateX = 0;
-  translateY = 0;
+  translateX = 0; translateY = 0;
   isDragging = false;
   imgElement = null;
+  root = null;
 }

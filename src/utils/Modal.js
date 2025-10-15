@@ -45,10 +45,12 @@ export class Modal {
     this.modalTitle.textContent = artwork.titulo;
     this.modalDesc.textContent = artwork.descripcion;
     this.modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
   }
 
   hide() {
     this.modal.style.display = 'none';
+    document.body.style.overflow = 'auto';
   }
 
   onClick(callback) {

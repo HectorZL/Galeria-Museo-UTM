@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { GalleryScene } from './scenes/GalleryScene.js';
-import { Modal } from './utils/Modal.js';
 import { loadObras } from '../js/lib/obras.js';
 import { mountObraModal, showObraModal } from '../js/lib/modal-obra.js';
 
@@ -26,6 +25,7 @@ export class App {
     this.initControls();
     this.initModal();
     this.setupEventListeners();
+    this.setupModalStateSync(); // Add modal state synchronization
     this.animate();
   }
 
@@ -87,7 +87,15 @@ export class App {
 
   initControls() {
     this.controls = new PointerLockControls(this.camera, document.body);
-    document.body.addEventListener('click', () => this.controls.lock());
+    document.body.addEventListener('click', (event) => {
+      console.log('Click event triggered, modalOpen:', this.modalOpen); // Debug log
+      if (!this.modalOpen && !window.__modalOpen) { // No bloquear controles si modal está abierto
+        console.log('Attempting to lock controls'); // Debug log
+        this.controls.lock();
+      } else {
+        console.log('Controls blocked because modal is open'); // Debug log
+      }
+    });
 
     this.keys = {
       w: false,
@@ -97,6 +105,7 @@ export class App {
     };
 
     document.addEventListener('keydown', (e) => {
+      if (this.modalOpen || window.__modalOpen) return; // Bloquear teclado si modal está abierto
       switch(e.key.toLowerCase()) {
         case 'w': this.keys.w = true; break;
         case 's': this.keys.s = true; break;
@@ -106,6 +115,7 @@ export class App {
     });
 
     document.addEventListener('keyup', (e) => {
+      if (this.modalOpen || window.__modalOpen) return; // Bloquear teclado si modal está abierto
       switch(e.key.toLowerCase()) {
         case 'w': this.keys.w = false; break;
         case 's': this.keys.s = false; break;
@@ -123,14 +133,6 @@ export class App {
     // Check if modal was created
     const modalRoot = document.getElementById('obra-modal-root');
     console.log('Modal root element:', modalRoot);
-
-    // Keep old modal as fallback
-    this.oldModal = new Modal();
-    this.oldModal.onClick(() => {
-      this.oldModal.hide();
-      this.modalOpen = false;
-      this.controls.lock();
-    });
   }
 
   setupEventListeners() {
@@ -145,6 +147,13 @@ export class App {
 
     // Store current hovered object for cursor changes
     this.hoveredObject = null;
+  }
+
+  setupModalStateSync() {
+    // Mantener un flag local pero también escuchar eventos del modal
+    this.modalOpen = !!window.__modalOpen;
+    window.addEventListener('obra-modal-open', () => { this.modalOpen = true; });
+    window.addEventListener('obra-modal-close', () => { this.modalOpen = false; });
   }
 
   onDocumentMouseMove(event) {
@@ -201,6 +210,8 @@ export class App {
   }
 
   update() {
+    if (this.modalOpen) return; // Block all updates when modal is open
+
     if (this.controls.isLocked) {
       const speed = 5; // Increased speed for better responsiveness
       const deltaTime = 0.016; // Approximate 60fps delta time
@@ -273,18 +284,21 @@ export class App {
                 this.modalOpen = true;
               },
               onClose: () => {
-                console.log('Modal closed');
-                this.modalOpen = false;
+                console.log('Modal closed, setting modalOpen to false');
+                this.modalOpen = false; // Establecer estado primero
+                console.log('modalOpen is now:', this.modalOpen); // Debug log
+                // Restore focus to canvas for immediate interaction
+                if (this.renderer && this.renderer.domElement) {
+                  this.renderer.domElement.focus();
+                }
+                // Note: Controls will be re-enabled on next user click via the event listener in initControls
               }
             });
 
             console.log('Modal root after show:', modalRoot);
             console.log('Modal root classes after:', modalRoot?.className);
           } else {
-            console.log('No obraData, using old modal');
-            // Fallback to old modal system
-            this.oldModal.show(object.userData);
-            this.modalOpen = true; // Set modal open for old modal too
+            console.log('No obraData found, cannot show modal');
           }
           this.controls.unlock();
         } else {
