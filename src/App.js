@@ -44,13 +44,13 @@ export class App {
         {
           titulo: 'Obra 1 — "Inicio"',
           z: -6,
-          imagen: 'images/1.JPG',
+          imagen: '/images/1.JPG',
           descripcion: 'Descripción detallada de la obra 1.'
         },
         {
           titulo: 'Obra 2 — "Centro"',
           z: 6,
-          imagen: 'images/2.JPG',
+          imagen: '/images/2.JPG',
           descripcion: 'Descripción detallada de la obra 2.'
         },
       ];
