@@ -5,8 +5,21 @@ import { Modal } from './utils/Modal.js';
 import { loadObras } from '../js/lib/obras.js';
 import { mountObraModal, showObraModal } from '../js/lib/modal-obra.js';
 
+// Helper function to safely handle material emissive properties
+function withEmissive(obj, fn) {
+  if (!obj || !obj.material) return;
+  const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+  for (const m of mats) {
+    if (m && m.emissive) fn(m);
+  }
+}
+
 export class App {
   constructor() {
+    // Modal state management
+    this.modalOpen = false;
+    this.INTERSECTED = null;
+
     this.initScene();
     this.initCamera();
     this.initRenderer();
@@ -104,12 +117,18 @@ export class App {
 
   initModal() {
     // Initialize the new modal system
+    console.log('Initializing modal system...');
     mountObraModal();
+
+    // Check if modal was created
+    const modalRoot = document.getElementById('obra-modal-root');
+    console.log('Modal root element:', modalRoot);
 
     // Keep old modal as fallback
     this.oldModal = new Modal();
     this.oldModal.onClick(() => {
       this.oldModal.hide();
+      this.modalOpen = false;
       this.controls.lock();
     });
   }
@@ -129,7 +148,9 @@ export class App {
   }
 
   onDocumentMouseMove(event) {
-    if (!this.controls.isLocked) {
+    if (this.modalOpen) return; // Block interaction when modal is open
+
+    if (this.controls.isLocked) {
       this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
       this.mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
 
@@ -138,18 +159,22 @@ export class App {
       // Check all objects in the scene for intersection
       const intersects = this.raycaster.intersectObjects(this.scene.children, true);
 
-      // Reset cursor for all objects first
-      this.scene.traverse((obj) => {
-        if (obj.userData && obj.userData.isArtwork) {
-          obj.material.emissive.setHex(0x000000);
-        }
-      });
+      // Reset emissive for previously hovered object
+      if (this.INTERSECTED) {
+        withEmissive(this.INTERSECTED, m => m.emissive.setHex(this.INTERSECTED._origHex ?? 0x000000));
+        this.INTERSECTED = null;
+      }
 
       if (intersects.length > 0) {
         const object = intersects[0].object;
+        console.log('Hover detected object:', object.type, 'userData:', object.userData);
         if (object.userData && object.userData.isArtwork) {
           // Highlight the hovered artwork
-          object.material.emissive.setHex(0x333333);
+          this.INTERSECTED = object;
+          withEmissive(this.INTERSECTED, m => {
+            if (this.INTERSECTED._origHex === undefined) this.INTERSECTED._origHex = m.emissive.getHex();
+            m.emissive.setHex(0x555555);
+          });
           document.body.style.cursor = 'pointer';
           this.hoveredObject = object;
         } else {
@@ -225,16 +250,45 @@ export class App {
 
       if (intersects.length > 0) {
         const object = intersects[0].object;
+        console.log('Clicked object:', object);
+        console.log('Object type:', object.type);
+        console.log('Object userData:', object.userData);
+        console.log('All intersects:', intersects.map(i => ({ type: i.object.type, userData: i.object.userData })));
+
         if (object.userData.imgSrc) {
+          console.log('Has imgSrc, checking for obraData...');
           // Try to use new modal system first
           if (object.userData.obraData) {
-            showObraModal(object.userData.obraData);
+            console.log('Has obraData, showing new modal with:', object.userData.obraData);
+            const modalRoot = document.getElementById('obra-modal-root');
+            console.log('Modal root before show:', modalRoot);
+            console.log('Modal root classes before:', modalRoot?.className);
+
+            showObraModal(object.userData.obraData, {
+              onOpen: () => {
+                console.log('Modal opened successfully');
+                this.modalOpen = true;
+              },
+              onClose: () => {
+                console.log('Modal closed');
+                this.modalOpen = false;
+              }
+            });
+
+            console.log('Modal root after show:', modalRoot);
+            console.log('Modal root classes after:', modalRoot?.className);
           } else {
+            console.log('No obraData, using old modal');
             // Fallback to old modal system
             this.oldModal.show(object.userData);
+            this.modalOpen = true; // Set modal open for old modal too
           }
           this.controls.unlock();
+        } else {
+          console.log('Object does not have imgSrc');
         }
+      } else {
+        console.log('No intersects found');
       }
     }
   }

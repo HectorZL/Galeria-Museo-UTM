@@ -40,25 +40,45 @@ if (e.target.matches('[data-close]')) hideObraModal();
 document.addEventListener('keydown', (e) => {
 if (e.key === 'Escape') hideObraModal();
 });
+
 }
 
 
-export function showObraModal(obra) {
-const root = document.getElementById('obra-modal-root');
-if (!root) return;
-root.querySelector('#obra-img').src = obra.imagen;
-root.querySelector('#obra-img').alt = obra.titulo;
-root.querySelector('#obra-titulo').textContent = obra.titulo;
-root.querySelector('#obra-autor').textContent = `${obra.autor} · ${obra.rol ?? ''}`.trim();
-root.querySelector('#obra-tecnica').textContent = obra.tecnica || '—';
-root.querySelector('#obra-tamano').textContent = obra.tamano || '—';
-root.querySelector('#obra-descripcion').textContent = obra.descripcion || '';
-root.classList.remove('hidden');
+export function showObraModal(obra, callbacks = {}) {
+  console.log('showObraModal called with:', obra);
+  const root = document.getElementById('obra-modal-root');
+  if (!root) {
+    console.error('Modal root not found!');
+    return;
+  }
+  console.log('Modal root found, showing modal...');
+
+  // Fill modal content
+  root.querySelector('#obra-img').src = obra.imagen;
+  root.querySelector('#obra-img').alt = obra.titulo;
+  root.querySelector('#obra-titulo').textContent = obra.titulo;
+  root.querySelector('#obra-autor').textContent = `${obra.autor} · ${obra.rol ?? ''}`.trim();
+  root.querySelector('#obra-tecnica').textContent = obra.tecnica || '—';
+  root.querySelector('#obra-tamano').textContent = obra.tamano || '—';
+  root.querySelector('#obra-descripcion').textContent = obra.descripcion || '';
+
+  // Show modal by removing hidden class
+  root.classList.remove('hidden');
+
+  // Execute onOpen callback if provided
+  if (callbacks.onOpen) {
+    callbacks.onOpen();
+  }
 }
 
 
-export function hideObraModal() {
-const root = document.getElementById('obra-modal-root');
-if (!root) return;
-root.classList.add('hidden');
+export function hideObraModal(callbacks = {}) {
+  const root = document.getElementById('obra-modal-root');
+  if (!root) return;
+  root.classList.add('hidden');
+
+  // Execute onClose callback if provided
+  if (callbacks.onClose) {
+    callbacks.onClose();
+  }
 }
