@@ -60,10 +60,10 @@ export class App {
 
     const numArtworks = this.obras.length;
     const numPairs = Math.ceil(numArtworks / 2);
-    const minSpacing = 4; // Minimum space between artworks
-    const maxSpacing = 6; // Maximum space between artworks
-    const artworkHeight = 2.5; // Approximate height of each artwork
-    const extraSpace = 10; // Extra space at the beginning and end
+    const minSpacing = 8; // Minimum space between artworks
+    const maxSpacing = 12; // Maximum space between artworks
+    const artworkHeight = 2; // Approximate height of each artwork
+    const extraSpace = 3; // Extra space at the beginning and end
 
     // Calculate total required space and spacing
     const totalArtworkSpace = numArtworks * artworkHeight;
@@ -246,7 +246,6 @@ export class App {
 
       // Reset previous hover state
       if (this.INTERSECTED) {
-        withEmissive(this.INTERSECTED, m => m.emissive.setHex(this.INTERSECTED._origHex ?? 0x000000));
         this.INTERSECTED = null;
         document.body.style.cursor = 'auto';
       }
@@ -261,13 +260,6 @@ export class App {
         if (artworkIntersect) {
           const object = artworkIntersect.object;
           this.INTERSECTED = object;
-          
-          // Highlight the hovered artwork
-          withEmissive(object, m => {
-            if (!object._origHex) object._origHex = m.emissive.getHex();
-            m.emissive.setHex(0x555555);
-          });
-          
           document.body.style.cursor = 'pointer';
           this.hoveredObject = object;
         }
