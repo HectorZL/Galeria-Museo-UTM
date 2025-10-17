@@ -91,6 +91,49 @@ export class App {
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(this.renderer.domElement);
+
+    // Add crosshair for center-screen clicking
+    this.createCrosshair();
+  }
+
+  createCrosshair() {
+    // Create crosshair element
+    this.crosshair = document.createElement('div');
+    this.crosshair.id = 'crosshair';
+    this.crosshair.style.position = 'fixed';
+    this.crosshair.style.top = '50%';
+    this.crosshair.style.left = '50%';
+    this.crosshair.style.width = '20px';
+    this.crosshair.style.height = '20px';
+    this.crosshair.style.transform = 'translate(-50%, -50%)';
+    this.crosshair.style.pointerEvents = 'none';
+    this.crosshair.style.zIndex = '1000';
+
+    // Create crosshair lines
+    const horizontalLine = document.createElement('div');
+    horizontalLine.style.position = 'absolute';
+    horizontalLine.style.top = '50%';
+    horizontalLine.style.left = '0';
+    horizontalLine.style.width = '100%';
+    horizontalLine.style.height = '2px';
+    horizontalLine.style.backgroundColor = '#ffffff';
+    horizontalLine.style.transform = 'translateY(-50%)';
+
+    const verticalLine = document.createElement('div');
+    verticalLine.style.position = 'absolute';
+    verticalLine.style.left = '50%';
+    verticalLine.style.top = '0';
+    verticalLine.style.width = '2px';
+    verticalLine.style.height = '100%';
+    verticalLine.style.backgroundColor = '#ffffff';
+    verticalLine.style.transform = 'translateX(-50%)';
+
+    // Add lines to crosshair
+    this.crosshair.appendChild(horizontalLine);
+    this.crosshair.appendChild(verticalLine);
+
+    // Add to document body
+    document.body.appendChild(this.crosshair);
   }
 
   initControls() {
@@ -165,42 +208,45 @@ export class App {
   }
 
   onDocumentMouseMove(event) {
-    if (this.modalOpen) return; // Block interaction when modal is open
+    if (this.modalOpen) return;
 
     if (this.controls.isLocked) {
       this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-      this.mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+      this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
+      // Update the raycaster with the camera and mouse position
       this.raycaster.setFromCamera(this.mouse, this.camera);
 
-      // Check all objects in the scene for intersection
+      // Check for intersections with all objects in the scene
       const intersects = this.raycaster.intersectObjects(this.scene.children, true);
 
-      // Reset emissive for previously hovered object
+      // Reset previous hover state
       if (this.INTERSECTED) {
         withEmissive(this.INTERSECTED, m => m.emissive.setHex(this.INTERSECTED._origHex ?? 0x000000));
         this.INTERSECTED = null;
+        document.body.style.cursor = 'auto';
       }
 
+      // Check for new intersections
       if (intersects.length > 0) {
-        const object = intersects[0].object;
-        console.log('Hover detected object:', object.type, 'userData:', object.userData);
-        if (object.userData && object.userData.isArtwork) {
-          // Highlight the hovered artwork
+        // Find the first object with isArtwork in userData
+        const artworkIntersect = intersects.find(intersect => 
+          intersect.object.userData && intersect.object.userData.isArtwork
+        );
+
+        if (artworkIntersect) {
+          const object = artworkIntersect.object;
           this.INTERSECTED = object;
-          withEmissive(this.INTERSECTED, m => {
-            if (this.INTERSECTED._origHex === undefined) this.INTERSECTED._origHex = m.emissive.getHex();
+          
+          // Highlight the hovered artwork
+          withEmissive(object, m => {
+            if (!object._origHex) object._origHex = m.emissive.getHex();
             m.emissive.setHex(0x555555);
           });
-          document.body.style.cursor = 'grab';
+          
+          document.body.style.cursor = 'pointer';
           this.hoveredObject = object;
-        } else {
-          document.body.style.cursor = 'auto';
-          this.hoveredObject = null;
         }
-      } else {
-        document.body.style.cursor = 'auto';
-        this.hoveredObject = null;
       }
     }
   }
@@ -261,65 +307,69 @@ export class App {
   }
 
   onDocumentClick(event) {
-    if (this.controls.isLocked) {
-      this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-      this.mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+    if (this.modalOpen || !this.controls.isLocked) return;
 
-      this.raycaster.setFromCamera(this.mouse, this.camera);
+    // Usar el centro de la pantalla para el raycasting (lo que ve el usuario)
+    const centerX = 0; // Centro en coordenadas normalizadas (-1 a 1)
+    const centerY = 0;
 
-      // Check all objects in the scene for intersection
-      const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+    // Crear un rayo desde el centro de la pantalla
+    this.mouse.x = centerX;
+    this.mouse.y = centerY;
 
-      if (intersects.length > 0) {
-        const object = intersects[0].object;
-        console.log('Clicked object:', object);
-        console.log('Object type:', object.type);
-        console.log('Object userData:', object.userData);
-        console.log('All intersects:', intersects.map(i => ({ type: i.object.type, userData: i.object.userData })));
+    // Update the raycaster with the camera and center position
+    this.raycaster.setFromCamera(this.mouse, this.camera);
 
+    // Check for intersections with all objects in the scene
+    const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+
+    if (intersects.length > 0) {
+      // Find the first object with isArtwork in userData
+      const artworkIntersect = intersects.find(intersect =>
+        intersect.object.userData && intersect.object.userData.isArtwork
+      );
+
+      if (artworkIntersect) {
+        const object = artworkIntersect.object;
+        console.log('Clicked artwork:', object.userData);
+
+        // Load high-res texture immediately for clicked artwork if needed
         if (object.userData.imgSrc) {
-          console.log('Has imgSrc, checking for obraData...');
-          // Load high-res texture immediately for clicked artwork
           const artwork = this.artworks.find(art => art.imgSrc === object.userData.imgSrc);
-          if (artwork) {
+          if (artwork && artwork.loadHighResTexture) {
             artwork.loadHighResTexture();
           }
-          // Try to use new modal system first
-          if (object.userData.obraData) {
-            console.log('Has obraData, showing new modal with:', object.userData.obraData);
-            const modalRoot = document.getElementById('obra-modal-root');
-            console.log('Modal root before show:', modalRoot);
-            console.log('Modal root classes before:', modalRoot?.className);
+        }
 
-            showObraModal(object.userData.obraData, {
-              onOpen: () => {
-                console.log('Modal opened successfully');
-                this.modalOpen = true;
-              },
-              onClose: () => {
-                console.log('Modal closed, setting modalOpen to false');
-                this.modalOpen = false; // Establecer estado primero
-                console.log('modalOpen is now:', this.modalOpen); // Debug log
-                // Restore focus to canvas for immediate interaction
-                if (this.renderer && this.renderer.domElement) {
-                  this.renderer.domElement.focus();
-                }
-                // Note: Controls will be re-enabled on next user click via the event listener in initControls
+        // Show the modal if we have the required data
+        if (object.userData.obraData) {
+          console.log('Showing modal for artwork:', object.userData.obraData.titulo);
+
+          showObraModal(object.userData.obraData, {
+            onOpen: () => {
+              this.modalOpen = true;
+              if (this.controls.isLocked) {
+                this.controls.unlock();
               }
-            });
-
-            console.log('Modal root after show:', modalRoot);
-            console.log('Modal root classes after:', modalRoot?.className);
-          } else {
-            console.log('No obraData found, cannot show modal');
-          }
-          this.controls.unlock();
+            },
+            onClose: () => {
+              this.modalOpen = false;
+              console.log('modalOpen is now:', this.modalOpen);
+              // Restore focus to canvas for immediate interaction
+              if (this.renderer && this.renderer.domElement) {
+                this.renderer.domElement.focus();
+              }
+              // Note: Controls will be re-enabled on next user click via the event listener in initControls
+            }
+          });
         } else {
-          console.log('Object does not have imgSrc');
+          console.log('No obraData found, cannot show modal');
         }
       } else {
-        console.log('No intersects found');
+        console.log('No artwork found at center of screen');
       }
+    } else {
+      console.log('No objects found at center of screen');
     }
   }
 
@@ -328,5 +378,9 @@ export class App {
       const distance = camera.position.distanceTo(artwork.mesh.position);
       artwork.updateQuality(distance);
     });
+  }
+
+  getScene() {
+    return this.scene;
   }
 }
