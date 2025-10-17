@@ -2,13 +2,30 @@ import * as THREE from 'three';
 import { Artwork } from '../models/Artwork.js';
 
 export class GalleryScene {
-  constructor() {
+  constructor(length = 100) {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0xFFF8E1); // Warm cream background
     this.halfW = 5;
-    this.length = 100; // Back to original length
+    this.length = length; // Dynamic length
     this.wallH = 5;
     this.artworks = [];
+    this.setupLights();
+    this.createGallery();
+  }
+
+  setLength(newLength) {
+    this.length = Math.max(30, newLength); // Ensure minimum length of 30 units
+    
+    // Remove existing gallery elements except artworks
+    const objectsToRemove = [];
+    this.scene.traverse((object) => {
+      if (object !== this.scene && !object.userData?.isArtwork) {
+        objectsToRemove.push(object);
+      }
+    });
+    objectsToRemove.forEach(obj => this.scene.remove(obj));
+    
+    // Rebuild gallery elements
     this.setupLights();
     this.createGallery();
   }
@@ -47,6 +64,15 @@ export class GalleryScene {
     wallR.position.x = this.halfW;
     wallR.rotation.y = -Math.PI/2;
     this.scene.add(wallR);
+
+    // End wall to prevent infinite look
+    const endWallMat = new THREE.MeshLambertMaterial({ color: 0xF0F0F0, opacity: 0.8, transparent: true });
+    const endWall = new THREE.Mesh(
+      new THREE.PlaneGeometry(2 * this.halfW, this.wallH),
+      endWallMat
+    );
+    endWall.position.set(0, this.wallH/2, this.length/2);
+    this.scene.add(endWall);
 
     // Barrel vault ceiling
     this.createVaultCeiling();
@@ -93,7 +119,7 @@ export class GalleryScene {
   createVaultCeiling() {
     // Radio ≈ medio ancho del pasillo para que la bóveda "apoye" en los muros
     const radius = this.halfW;            // 5
-    const vaultLength = this.length;      // 100
+    const vaultLength = this.length;      // Dynamic length
 
     // CylinderGeometry: medio cilindro (thetaLength = Math.PI), sin tapas (openEnded = true)
     const vaultGeo = new THREE.CylinderGeometry(

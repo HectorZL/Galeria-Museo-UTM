@@ -43,12 +43,14 @@ export class App {
       this.obras = [
         {
           titulo: 'Obra 1 — "Inicio"',
+          id: 1,
           z: -6,
           imagen: '/images/1.JPG',
           descripcion: 'Descripción detallada de la obra 1.'
         },
         {
           titulo: 'Obra 2 — "Centro"',
+          id: 2,
           z: 6,
           imagen: '/images/2.JPG',
           descripcion: 'Descripción detallada de la obra 2.'
@@ -56,12 +58,34 @@ export class App {
       ];
     }
 
-    // Add artworks to the gallery with proper spacing - 5 on left, 5 on right
-    const artworkSpacing = 8; // Increased spacing for better visibility
+    const numArtworks = this.obras.length;
+    const numPairs = Math.ceil(numArtworks / 2);
+    const minSpacing = 4; // Minimum space between artworks
+    const maxSpacing = 6; // Maximum space between artworks
+    const artworkHeight = 2.5; // Approximate height of each artwork
+    const extraSpace = 10; // Extra space at the beginning and end
+
+    // Calculate total required space and spacing
+    const totalArtworkSpace = numArtworks * artworkHeight;
+    const availableSpace = Math.max(30, (numArtworks * minSpacing) + extraSpace * 2);
+    const spacing = Math.min(
+      maxSpacing, 
+      Math.max(minSpacing, (availableSpace - totalArtworkSpace) / (numArtworks - 1 || 1))
+    );
+
+    // Update gallery with dynamic length
+    this.gallery.setLength(availableSpace);
+
+    // Position artworks
+    let currentZ = -((numPairs * spacing) / 2) + (spacing / 2);
+    
     const artworks = this.obras.map((obra, index) => {
-      const side = index % 2 === 0 ? 'left' : 'right'; // Alternate sides
-      const wallOffset = side === 'left' ? -this.gallery.halfW + 0.1 : this.gallery.halfW - 0.1; // Position near walls
-      const zPosition = -20 + (Math.floor(index / 2) * artworkSpacing); // Back to original spacing
+      const side = index % 2 === 0 ? 'left' : 'right';
+      const wallOffset = side === 'left' ? -this.gallery.halfW + 0.1 : this.gallery.halfW - 0.1;
+      
+      // Calculate Z position based on index and spacing
+      const zPosition = currentZ;
+      currentZ += side === 'left' ? 0 : spacing; // Only advance after placing the pair
 
       return {
         titulo: `${obra.id} — "${obra.titulo}"`,
@@ -69,7 +93,6 @@ export class App {
         z: zPosition,
         imgSrc: obra.imagen,
         descripcion: obra.descripcion,
-        // Store additional data for the modal
         obraData: obra
       };
     });
@@ -82,8 +105,9 @@ export class App {
 
   initCamera() {
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    this.camera.position.set(0, 1.6, -23); // Start at beginning of artworks, slightly behind first one
-    this.camera.rotation.y = Math.PI; // Rotate 180 degrees to face opposite direction
+    // Position camera at the start of the gallery, slightly behind the first artwork
+    this.camera.position.set(0, 1.6, -this.gallery.length / 2 + 2);
+    this.camera.rotation.y = Math.PI; // Rotate 180 degrees to face forward
   }
 
   initRenderer() {
@@ -296,7 +320,7 @@ export class App {
 
       // Limit movement within gallery bounds
       const halfW = 4.6; // Slightly less than wall position
-      const halfL = 60;  // Back to original gallery length bounds
+      const halfL = this.gallery.length / 2 - 5; // Use dynamic length, leave space before end wall
       camera.position.x = Math.max(-halfW, Math.min(halfW, camera.position.x));
       camera.position.z = Math.max(-halfL, Math.min(halfL, camera.position.z));
       camera.position.y = 1.6; // Fixed height
