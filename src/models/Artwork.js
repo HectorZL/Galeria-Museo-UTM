@@ -31,7 +31,6 @@ export class Artwork {
     
     // Create artwork image
     const textureLoader = new THREE.TextureLoader();
-    // Initially load low-res texture for performance
     this.loadLowResTexture();
     const material = new THREE.MeshBasicMaterial({
       map: this.lowResTexture,
@@ -45,45 +44,164 @@ export class Artwork {
     const image = new THREE.Mesh(geometry, material);
     image.position.z = 0.051; // Slightly in front of the frame
     
+    // Create info panel with glass effect - now more square
+    const panelSize = 0.5; // Square size
+    const panelGeometry = new THREE.PlaneGeometry(panelSize, panelSize);
+    
+    // Glass material
+    const panelMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0xffffff,
+      metalness: 0.1,
+      roughness: 0.1,
+      transmission: 0.9,
+      transparent: true,
+      opacity: 0.7,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.1,
+      ior: 1.5,
+      envMapIntensity: 1.0,
+      side: THREE.DoubleSide
+    });
+    
+    const infoPanel = new THREE.Mesh(panelGeometry, panelMaterial);
+    
+    // Position panel to the right of the artwork (or left if on right wall)
+    const panelOffset = (frameWidth / 2) + (panelSize / 2) + 0.1; // Small gap
+    infoPanel.position.set(
+      this.x < 0 ? -panelOffset : panelOffset,
+      0.2, // Slightly higher to center vertically
+      0
+    );
+    
+    // Add title to the panel
+    this.createTitlePanel().then(titleMesh => {
+      titleMesh.position.set(0, 0, 0.01); // Slightly in front of the panel
+      infoPanel.add(titleMesh);
+    });
+    
+    // Add userData to panel for click detection
+    infoPanel.userData = {
+      titulo: this.titulo,
+      descripcion: this.descripcion,
+      imgSrc: this.imgSrc,
+      isInfoPanel: true,
+      obraData: this.obraData,
+      isArtwork: true // To ensure it's picked up by the raycaster
+    };
+    
     // Add frame and image to group
     group.add(frame);
     group.add(image);
+    group.add(infoPanel);
     
     // Add userData to all child meshes for click detection
-    frame.userData = {
+    const userData = {
       titulo: this.titulo,
       descripcion: this.descripcion,
       imgSrc: this.imgSrc,
       isArtwork: true,
       obraData: this.obraData
     };
-    image.userData = {
-      titulo: this.titulo,
-      descripcion: this.descripcion,
-      imgSrc: this.imgSrc,
-      isArtwork: true,
-      obraData: this.obraData
-    };
+    
+    frame.userData = userData;
+    image.userData = userData;
     
     // Position the entire group and set rotation based on side
     group.position.set(this.x, 2.2, this.z);
-
-    // Rotate based on which side the artwork is on
-    // Left side (negative x) should face right (positive x) - rotation.y = Math.PI/2
-    // Right side (positive x) should face left (negative x) - rotation.y = -Math.PI/2
     group.rotation.y = this.x < 0 ? Math.PI/2 : -Math.PI/2;
-
+    
     // Add interactivity to the group
-    group.userData = {
-      titulo: this.titulo,
-      descripcion: this.descripcion,
-      imgSrc: this.imgSrc,
-      isArtwork: true,
-      obraData: this.obraData
-    };
+    group.userData = userData;
     group.cursor = 'pointer';
 
     return group;
+  }
+  
+  async createTitlePanel() {
+    const canvas = document.createElement('canvas');
+    const size = 256; // Smaller canvas for the smaller panel
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    
+    // Draw semi-transparent background with rounded corners
+    const cornerRadius = 15; // Smaller radius for smaller panel
+    ctx.fillStyle = 'rgba(40, 40, 40, 0.7)';
+    this.roundRect(ctx, 0, 0, size, size, cornerRadius);
+    ctx.fill();
+    
+    // Draw title text (split into multiple lines if needed)
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    const maxWidth = size * 0.9; // Use more of the available width
+    const lineHeight = size / 6;  // Slightly more compact line height
+    let y = size * 0.5;          // Start lower in the panel
+    
+    // Calculate maximum font size that fits
+    let fontSize = Math.min(size / 8, 24); // Start with a smaller base font size
+    ctx.font = `bold ${fontSize}px Arial`;
+    
+    // Split title into words and create lines
+    const words = this.titulo.split(' ');
+    const lines = [];
+    let line = '';
+    
+    // First pass: calculate how many lines we'll need
+    for (const word of words) {
+      const testLine = line ? `${line} ${word}` : word;
+      const metrics = ctx.measureText(testLine);
+      
+      if (metrics.width > maxWidth && line) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = testLine;
+      }
+    }
+    if (line) lines.push(line);
+    
+    // Adjust font size if we have too many lines
+    if (lines.length > 2) {
+      fontSize = Math.max(12, fontSize - (lines.length - 2) * 2);
+      ctx.font = `bold ${fontSize}px Arial`;
+    }
+    
+    // Calculate starting y position to center the text
+    y = (size - (lines.length - 1) * lineHeight) / 2;
+    
+    // Draw all lines
+    for (const textLine of lines) {
+      ctx.fillText(textLine, size / 2, y);
+      y += lineHeight;
+    }
+    
+    // Create texture from canvas
+    const texture = new THREE.CanvasTexture(canvas);
+    const material = new THREE.MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      opacity: 0.9
+    });
+    
+    const geometry = new THREE.PlaneGeometry(0.6, 0.6); // Slightly smaller than panel
+    return new THREE.Mesh(geometry, material);
+  }
+  
+  // Helper function to draw rounded rectangles
+  roundRect(ctx, x, y, width, height, radius) {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
   }
 
   createTitle() {
@@ -174,7 +292,7 @@ export class Artwork {
   }
 
   getObjects() {
-    return [this.mesh, this.createTitle()];
+    return [this.mesh]; // Title is now part of the mesh
   }
 
   createBlurredTexture() {

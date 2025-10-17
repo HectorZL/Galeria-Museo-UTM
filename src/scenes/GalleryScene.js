@@ -42,7 +42,7 @@ export class GalleryScene {
     const floorGeometry = new THREE.PlaneGeometry(2 * this.halfW, this.length);
     // Create checkered floor pattern - very light lead gray and white tiles
     const floorMaterial = new THREE.MeshLambertMaterial({
-      color: 0xE8E8E8, // Very light lead gray to match tiles
+      
       map: this.createFloorTexture()
     });
     const floor = new THREE.Mesh(floorGeometry, floorMaterial);
@@ -50,7 +50,7 @@ export class GalleryScene {
     this.scene.add(floor);
 
     // Walls white
-    const wallMat = new THREE.MeshLambertMaterial({ color: 0xFFFFFF, opacity: 0.15, transparent: true }); // White with reduced opacity
+    const wallMat = new THREE.MeshLambertMaterial({ color: 0xF00FF, opacity: 0.15, transparent: true }); // White with reduced opacity
 
     const wallL = new THREE.Mesh(
       new THREE.PlaneGeometry(this.wallH, this.length),
@@ -79,29 +79,15 @@ export class GalleryScene {
   }
 
   createFloorTexture() {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = 1024;
-    canvas.height = 1024;
-
-    // Create checkered floor pattern - very light lead gray and white tiles
-    const tileSize = 128; // Size of each tile
-    const leadColor = '#E8E8E8'; // Very light lead gray
-    const whiteColor = '#FFFFFF'; // Pure white
-
-    // Draw checkered pattern
-    for (let x = 0; x < canvas.width; x += tileSize) {
-      for (let y = 0; y < canvas.height; y += tileSize) {
-        const tileX = Math.floor(x / tileSize);
-        const tileY = Math.floor(y / tileSize);
-        const isLead = (tileX + tileY) % 2 === 0;
-
-        ctx.fillStyle = isLead ? leadColor : whiteColor;
-        ctx.fillRect(x, y, tileSize, tileSize);
-      }
-    }
-
-    return new THREE.CanvasTexture(canvas);
+    const textureLoader = new THREE.TextureLoader();
+    const texture = textureLoader.load('textura/madera.jpg');
+    
+    // Set texture wrapping and repeat for seamless tiling
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(10, this.length / 10); // Adjust repeat based on floor size
+    
+    return texture;
   }
 
   addArtwork(artworkData) {
