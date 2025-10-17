@@ -56,16 +56,23 @@ export class App {
       ];
     }
 
-    // Add artworks to the gallery with proper spacing
-    const artworkSpacing = 6;
-    const artworks = this.obras.map((obra, index) => ({
-      titulo: `${obra.id} — "${obra.titulo}"`,
-      z: -artworkSpacing + (index * artworkSpacing),
-      imgSrc: obra.imagen,
-      descripcion: obra.descripcion,
-      // Store additional data for the modal
-      obraData: obra
-    }));
+    // Add artworks to the gallery with proper spacing - 5 on left, 5 on right
+    const artworkSpacing = 8; // Increased spacing for better visibility
+    const artworks = this.obras.map((obra, index) => {
+      const side = index % 2 === 0 ? 'left' : 'right'; // Alternate sides
+      const wallOffset = side === 'left' ? -this.gallery.halfW + 0.1 : this.gallery.halfW - 0.1; // Position near walls
+      const zPosition = -20 + (Math.floor(index / 2) * artworkSpacing); // Back to original spacing
+
+      return {
+        titulo: `${obra.id} — "${obra.titulo}"`,
+        x: wallOffset,
+        z: zPosition,
+        imgSrc: obra.imagen,
+        descripcion: obra.descripcion,
+        // Store additional data for the modal
+        obraData: obra
+      };
+    });
 
     this.artworks = [];
     artworks.forEach(artwork => {
@@ -75,7 +82,8 @@ export class App {
 
   initCamera() {
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    this.camera.position.set(0, 1.6, 0); // Start in the center of the gallery
+    this.camera.position.set(0, 1.6, -23); // Start at beginning of artworks, slightly behind first one
+    this.camera.rotation.y = Math.PI; // Rotate 180 degrees to face opposite direction
   }
 
   initRenderer() {
@@ -242,7 +250,7 @@ export class App {
 
       // Limit movement within gallery bounds
       const halfW = 4.6; // Slightly less than wall position
-      const halfL = 60;  // Increased gallery length for better movement
+      const halfL = 60;  // Back to original gallery length bounds
       camera.position.x = Math.max(-halfW, Math.min(halfW, camera.position.x));
       camera.position.z = Math.max(-halfL, Math.min(halfL, camera.position.z));
       camera.position.y = 1.6; // Fixed height

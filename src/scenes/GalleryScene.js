@@ -4,9 +4,9 @@ import { Artwork } from '../models/Artwork.js';
 export class GalleryScene {
   constructor() {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0xffffff);
+    this.scene.background = new THREE.Color(0xFFF8E1); // Warm cream background
     this.halfW = 5;
-    this.length = 100;
+    this.length = 100; // Back to original length
     this.wallH = 5;
     this.artworks = [];
     this.setupLights();
@@ -14,25 +14,26 @@ export class GalleryScene {
   }
 
   setupLights() {
-    this.scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-    const key = new THREE.DirectionalLight(0xffffff, 0.6);
+    this.scene.add(new THREE.AmbientLight(0xFFFFFE, 0.3)); // Very light warm ambient light
+    const key = new THREE.DirectionalLight(0xFFFFFE, 0.2); // Very light warm directional light
     key.position.set(2, 5, 2);
     this.scene.add(key);
   }
 
   createGallery() {
-    // Floor with marble-like texture
+    // Floor with checkered very light lead gray and white pattern
     const floorGeometry = new THREE.PlaneGeometry(2 * this.halfW, this.length);
+    // Create checkered floor pattern - very light lead gray and white tiles
     const floorMaterial = new THREE.MeshLambertMaterial({
-      color: 0x888888,
+      color: 0xE8E8E8, // Very light lead gray to match tiles
       map: this.createFloorTexture()
     });
     const floor = new THREE.Mesh(floorGeometry, floorMaterial);
     floor.rotation.x = -Math.PI/2;
     this.scene.add(floor);
 
-    // Walls
-    const wallMat = new THREE.MeshLambertMaterial({ color: 0xeeeeee });
+    // Walls white
+    const wallMat = new THREE.MeshLambertMaterial({ color: 0xFFFFFF, opacity: 0.15, transparent: true }); // White with reduced opacity
 
     const wallL = new THREE.Mesh(
       new THREE.PlaneGeometry(this.wallH, this.length),
@@ -47,14 +48,8 @@ export class GalleryScene {
     wallR.rotation.y = -Math.PI/2;
     this.scene.add(wallR);
 
-    // Ceiling
-    const ceiling = new THREE.Mesh(
-      new THREE.PlaneGeometry(2 * this.halfW, this.length),
-      new THREE.MeshLambertMaterial({ color: 0xffffff })
-    );
-    ceiling.rotation.x = Math.PI/2;
-    ceiling.position.y = this.wallH;
-    this.scene.add(ceiling);
+    // Barrel vault ceiling
+    this.createVaultCeiling();
   }
 
   createFloorTexture() {
@@ -63,68 +58,21 @@ export class GalleryScene {
     canvas.width = 1024;
     canvas.height = 1024;
 
-    // Create classic museum floor pattern - checkerboard marble tiles
-    const tileSize = 128;
-    const colors = [
-      '#f5f5f0', // Off-white marble
-      '#e8e8e0'  // Slightly darker marble
-    ];
+    // Create checkered floor pattern - very light lead gray and white tiles
+    const tileSize = 128; // Size of each tile
+    const leadColor = '#E8E8E8'; // Very light lead gray
+    const whiteColor = '#FFFFFF'; // Pure white
 
-    // Draw checkerboard pattern
+    // Draw checkered pattern
     for (let x = 0; x < canvas.width; x += tileSize) {
       for (let y = 0; y < canvas.height; y += tileSize) {
         const tileX = Math.floor(x / tileSize);
         const tileY = Math.floor(y / tileSize);
-        const colorIndex = (tileX + tileY) % 2;
+        const isLead = (tileX + tileY) % 2 === 0;
 
-        ctx.fillStyle = colors[colorIndex];
+        ctx.fillStyle = isLead ? leadColor : whiteColor;
         ctx.fillRect(x, y, tileSize, tileSize);
-
-        // Add subtle marble veining using deterministic pattern
-        const veinSeed = (tileX * 7 + tileY * 13) % 100;
-        if (veinSeed > 70) {
-          ctx.strokeStyle = `rgba(200, 200, 190, ${(veinSeed - 70) / 30 * 0.3 + 0.1})`;
-          ctx.lineWidth = ((veinSeed - 70) / 30 * 2) + 1;
-          ctx.beginPath();
-
-          // Create consistent vein pattern based on tile position
-          const startX = x + (tileX * 17) % tileSize;
-          const startY = y;
-          const endX = x + (tileY * 23) % tileSize;
-          const endY = y + tileSize;
-
-          ctx.moveTo(startX, startY);
-          ctx.lineTo(endX, endY);
-          ctx.stroke();
-        }
-
-        // Add texture variation using deterministic pattern
-        const textureSeed = (tileX * 11 + tileY * 19) % 100;
-        if (textureSeed > 80) {
-          ctx.fillStyle = `rgba(255, 255, 255, ${(textureSeed - 80) / 20 * 0.2})`;
-          const spotX = x + (tileX * 29) % tileSize;
-          const spotY = y + (tileY * 31) % tileSize;
-          ctx.fillRect(spotX, spotY, 20, 20);
-        }
       }
-    }
-
-    // Add grout lines between tiles
-    ctx.strokeStyle = '#d0d0c8';
-    ctx.lineWidth = 2;
-
-    for (let x = 0; x <= canvas.width; x += tileSize) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, canvas.height);
-      ctx.stroke();
-    }
-
-    for (let y = 0; y <= canvas.height; y += tileSize) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(canvas.width, y);
-      ctx.stroke();
     }
 
     return new THREE.CanvasTexture(canvas);
@@ -140,5 +88,44 @@ export class GalleryScene {
 
   getScene() {
     return this.scene;
+  }
+
+  createVaultCeiling() {
+    // Radio ≈ medio ancho del pasillo para que la bóveda "apoye" en los muros
+    const radius = this.halfW;            // 5
+    const vaultLength = this.length;      // 100
+
+    // CylinderGeometry: medio cilindro (thetaLength = Math.PI), sin tapas (openEnded = true)
+    const vaultGeo = new THREE.CylinderGeometry(
+      radius,           // radiusTop
+      radius,           // radiusBottom
+      vaultLength,      // height (luego será eje X)
+      48,               // radialSegments (suavidad del arco)
+      1,                // heightSegments
+      true,             // openEnded (sin tapas)
+      0,                // thetaStart
+      Math.PI           // thetaLength (medio cilindro)
+    );
+
+    // Material blanco cálido muy suave (Lambert para reaccionar a tus luces)
+    const vaultMat = new THREE.MeshLambertMaterial({
+      color: 0xFFFFFE,
+      side: THREE.DoubleSide
+    });
+
+    const vault = new THREE.Mesh(vaultGeo, vaultMat);
+
+    // Ajustamos la rotación para que coincida con la orientación del piso
+    vault.rotation.x =     -Math.PI/2;; // Misma rotación que el piso
+    vault.rotation.y =     -Math.PI/2;;
+    vault.rotation.z = 0;
+
+    // Posicionamos la bóveda en el centro del techo
+    vault.position.set(0, this.wallH + radius, 0);
+    
+    // Opcional: ajustar la escala si es necesario
+    // vault.scale.set(1, 1, 1);
+
+    this.scene.add(vault);
   }
 }

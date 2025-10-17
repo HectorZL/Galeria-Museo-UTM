@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 
 export class Artwork {
-  constructor({ titulo, z, imgSrc, descripcion = '', obraData = null }) {
+  constructor({ titulo, x = 0, z = 0, imgSrc, descripcion = '', obraData = null }) {
     this.titulo = titulo;
+    this.x = x;
     this.z = z;
     this.imgSrc = imgSrc;
     this.descripcion = descripcion;
@@ -64,9 +65,13 @@ export class Artwork {
       obraData: this.obraData
     };
     
-    // Position the entire group
-    group.position.set(4.95, 2.2, this.z);
-    group.rotation.y = -Math.PI/2;
+    // Position the entire group and set rotation based on side
+    group.position.set(this.x, 2.2, this.z);
+
+    // Rotate based on which side the artwork is on
+    // Left side (negative x) should face right (positive x) - rotation.y = Math.PI/2
+    // Right side (positive x) should face left (negative x) - rotation.y = -Math.PI/2
+    group.rotation.y = this.x < 0 ? Math.PI/2 : -Math.PI/2;
 
     // Add interactivity to the group
     group.userData = {
@@ -157,11 +162,13 @@ export class Artwork {
     const imageZ = this.z; // Posición Z de la imagen
 
     titleMesh.position.set(
-      4.95, // Misma posición X que la imagen (centrada horizontalmente)
-      imageY - imageHeight/2 - titleHeight/2 - 0.3, // Debajo de la imagen con espacio
-      imageZ - 0.1 // Misma posición Z que la imagen (centrada en profundidad)
+      this.x, // Same x position as the artwork
+      imageY - imageHeight/2 - titleHeight/2 - 0.3, // Below the image with space
+      this.z - 0.1 // Same z position as the artwork
     );
-    titleMesh.rotation.y = -Math.PI/2;
+
+    // Rotate title to match artwork rotation
+    titleMesh.rotation.y = this.x < 0 ? Math.PI/2 : -Math.PI/2;
 
     return titleMesh;
   }
