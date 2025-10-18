@@ -10,36 +10,24 @@ export class Floor {
   }
 
   createFloorTexture() {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = 1024;
-    canvas.height = 1024;
-
-    // Create checkered floor pattern - very light lead gray and white tiles
-    const tileSize = 128;
-    const leadColor = '#E8E8E8';
-    const whiteColor = '#FFFFFF';
-
-    // Draw checkered pattern
-    for (let x = 0; x < canvas.width; x += tileSize) {
-      for (let y = 0; y < canvas.height; y += tileSize) {
-        const tileX = Math.floor(x / tileSize);
-        const tileY = Math.floor(y / tileSize);
-        const isLead = (tileX + tileY) % 2 === 0;
-
-        ctx.fillStyle = isLead ? leadColor : whiteColor;
-        ctx.fillRect(x, y, tileSize, tileSize);
-      }
-    }
-
-    return new THREE.CanvasTexture(canvas);
+    const textureLoader = new THREE.TextureLoader();
+    const texture = textureLoader.load('textura/madera.jpg');
+    
+    // Configure texture properties for better appearance
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(10, 10); // Adjust the scale of the texture
+    texture.anisotropy = 16; // For better texture quality
+    
+    return texture;
   }
 
   createFloor() {
     const floorGeometry = new THREE.PlaneGeometry(2 * this.halfW, this.length);
-    const floorMaterial = new THREE.MeshLambertMaterial({
-      color: 0xE8E8E8,
-      map: this.createFloorTexture()
+    const floorMaterial = new THREE.MeshStandardMaterial({
+      map: this.createFloorTexture(),
+      roughness: 0.8,
+      metalness: 0.2
     });
     
     const floor = new THREE.Mesh(floorGeometry, floorMaterial);
