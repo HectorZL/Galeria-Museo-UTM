@@ -16,20 +16,41 @@ export class Walls {
   }
 
   createWalls() {
+    // Calculate wall dimensions to match floor edges
+    const wallThickness = 0.1; // Thin wall thickness
+    const wallLength = this.length;
+    const wallHeight = this.wallH;
+    
+    // Create wall material with higher opacity
+    const wallMaterial = new THREE.MeshStandardMaterial({
+      color: 0xFFFFFF,
+      opacity: 0.8,
+      transparent: true,
+      side: THREE.DoubleSide
+    });
+
     // Left wall
-    const wallL = new THREE.Mesh(
-      new THREE.PlaneGeometry(this.wallH, this.length),
-      this.wallMat
-    );
-    wallL.position.set(-this.halfW, this.wallH/2, 0);
-    wallL.rotation.y = Math.PI/2;
-    this.scene.add(wallL);
+    const leftWallGeometry = new THREE.BoxGeometry(wallThickness, wallHeight, wallLength);
+    const leftWall = new THREE.Mesh(leftWallGeometry, wallMaterial);
+    leftWall.position.set(-this.halfW + wallThickness/2, wallHeight/2, 0);
+    this.scene.add(leftWall);
 
     // Right wall
-    const wallR = wallL.clone();
-    wallR.position.x = this.halfW;
-    wallR.rotation.y = -Math.PI/2;
-    this.scene.add(wallR);
+    const rightWallGeometry = new THREE.BoxGeometry(wallThickness, wallHeight, wallLength);
+    const rightWall = new THREE.Mesh(rightWallGeometry, wallMaterial);
+    rightWall.position.set(this.halfW - wallThickness/2, wallHeight/2, 0);
+    this.scene.add(rightWall);
+    
+    // Front wall (if needed)
+    const frontWallGeometry = new THREE.BoxGeometry(this.halfW * 2, wallHeight, wallThickness);
+    const frontWall = new THREE.Mesh(frontWallGeometry, wallMaterial);
+    frontWall.position.set(0, wallHeight/2, -this.length/2 + wallThickness/2);
+    this.scene.add(frontWall);
+    
+    // Back wall (if needed)
+    const backWall = frontWall.clone();
+    backWall.position.z = this.length/2 - wallThickness/2;
+    this.scene.add(backWall);
   }
 }
 
