@@ -15,22 +15,67 @@
     canvas {
       display: block;
     }
-    #msg {
+    /* Modal styles */
+    .modal {
+      display: flex;
       position: fixed;
-      bottom: 20px;
+      top: 0;
       left: 0;
       right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      opacity: 1;
+      transition: opacity 0.3s ease-in-out;
+    }
+    
+    .modal.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    
+    .modal-content {
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      max-width: 500px;
+      width: 90%;
       text-align: center;
-      font: 14px/1.2 system-ui;
-      color: #333; /* Dark text for warm white background */
-      background: rgba(255, 255, 255, 0.95); /* White background for warm white scene */
-      padding: 10px;
-      backdrop-filter: blur(5px);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .info-icon {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 30px;
+      height: 30px;
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      z-index: 1001;
+      font-weight: bold;
+      font-size: 18px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     }
   </style>
 </head>
 <body>
-  <div id="msg">Clic para comenzar - Usa WASD para moverte por la galería 3D - ESC para salir</div>
+  <!-- Modal -->
+  <div id="welcomeModal" class="modal">
+    <div class="modal-content">
+      <p>Clic para comenzar - Usa WASD para moverte por la galería 3D - ESC para salir</p>
+      <button id="closeModal" style="margin-top: 20px; padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">Entendido</button>
+    </div>
+  </div>
+  
+  <!-- Info Icon -->
+  <div id="infoIcon" class="info-icon">i</div>
 
   <!-- Polyfill para import maps en navegadores antiguos -->
   <script async src="https://unpkg.com/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
@@ -45,6 +90,39 @@
   }
   </script>
 
+  <script>
+    // Modal functionality
+    document.addEventListener('DOMContentLoaded', function() {
+      const modal = document.getElementById('welcomeModal');
+      const closeButton = document.getElementById('closeModal');
+      const infoIcon = document.getElementById('infoIcon');
+      
+      // Close modal when clicking the button
+      closeButton.addEventListener('click', function() {
+        modal.classList.add('hidden');
+      });
+      
+      // Toggle modal when clicking the info icon
+      infoIcon.addEventListener('click', function() {
+        modal.classList.toggle('hidden');
+      });
+      
+      // Close modal when clicking outside the modal content
+      modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+          modal.classList.add('hidden');
+        }
+      });
+      
+      // Close modal with Escape key
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          modal.classList.add('hidden');
+        }
+      });
+    });
+  </script>
+  
   <script type="module">
     // Usar ruta absoluta para asegurar que se encuentre el módulo
     import { App } from '/src/App.js';

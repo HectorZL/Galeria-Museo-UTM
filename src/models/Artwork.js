@@ -19,8 +19,8 @@ export class Artwork {
     const group = new THREE.Group();
     
     // Create frame
-    const frameWidth = 2.4;  // Increased width to accommodate frame
-    const frameHeight = 3.0; // Increased height to accommodate frame
+    const frameWidth = 2;  // Increased width to accommodate frame
+    const frameHeight = 2.5; // Increased height to accommodate frame
     const frameDepth = 0.1;
     const frameGeometry = new THREE.BoxGeometry(frameWidth, frameHeight, frameDepth);
     const frameMaterial = new THREE.MeshPhongMaterial({
