@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-import { GalleryScene } from './scenes/GalleryScene.js';
-import { loadObras } from '../js/lib/obras.js';
-import { mountObraModal, showObraModal } from '../js/lib/modal-obra.js';
+import { GalleryScene } from './scenes/gallery/GalleryScene.js';
+import { loadObras } from '../../js/lib/obras.js';
+import { mountObraModal, showObraModal } from '../../js/lib/modal-obra.js';
 
 // Helper function to safely handle material emissive properties
 function withEmissive(obj, fn) {
@@ -15,99 +15,142 @@ function withEmissive(obj, fn) {
 
 export class App {
   constructor() {
+    // Component ready state
+    this._ready = false;
+    
     // Modal state management
     this.modalOpen = false;
     this.INTERSECTED = null;
 
-    this.initScene();
-    this.initCamera();
-    this.initRenderer();
-    this.initControls();
-    this.initModal();
-    this.setupEventListeners();
-    this.setupModalStateSync(); // Add modal state synchronization
-    this.animate();
+    // Bind methods to ensure proper 'this' context
+    this.animate = this.animate.bind(this);
+    this.onWindowResize = this.onWindowResize.bind(this);
+    this.onDocumentClick = this.onDocumentClick.bind(this);
+
+    try {
+      // Initialize camera first
+      this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      
+      // Initialize the scene (which will set up the camera position)
+      this.initScene().then(() => {
+        // Initialize the rest of the components
+        this.initRenderer();
+        this.initControls();
+        this.initModal();
+        this.setupEventListeners();
+        this.setupModalStateSync();
+        
+        // Mark as ready and start animation loop
+        this._ready = true;
+        this.animate();
+      }).catch(error => {
+        console.error('Error initializing scene:', error);
+      });
+    } catch (error) {
+      console.error('Error in App constructor:', error);
+    }
   }
 
   async initScene() {
-    this.gallery = new GalleryScene();
-    this.scene = this.gallery.getScene();
-
-    // Load obras data from JSON
     try {
-      const obrasData = await loadObras();
-      this.obras = obrasData.list;
-    } catch (error) {
-      console.error('Error loading obras:', error);
-      // Fallback to hardcoded data if JSON fails
-      this.obras = [
-        {
-          titulo: 'Obra 1 — "Inicio"',
-          id: 1,
-          z: -6,
-          imagen: '/images/1.JPG',
-          descripcion: 'Descripción detallada de la obra 1.'
-        },
-        {
-          titulo: 'Obra 2 — "Centro"',
-          id: 2,
-          z: 6,
-          imagen: '/images/2.JPG',
-          descripcion: 'Descripción detallada de la obra 2.'
-        },
-      ];
-    }
-
-    const numArtworks = this.obras.length;
-    const numPairs = Math.ceil(numArtworks / 2);
-    const minSpacing = 8; // Minimum space between artworks
-    const maxSpacing = 12; // Maximum space between artworks
-    const artworkHeight = 2; // Approximate height of each artwork
-    const extraSpace = 3; // Extra space at the beginning and end
-
-    // Calculate total required space and spacing
-    const totalArtworkSpace = numArtworks * artworkHeight;
-    const availableSpace = Math.max(30, (numArtworks * minSpacing) + extraSpace * 2);
-    const spacing = Math.min(
-      maxSpacing, 
-      Math.max(minSpacing, (availableSpace - totalArtworkSpace) / (numArtworks - 1 || 1))
-    );
-
-    // Update gallery with dynamic length
-    this.gallery.setLength(availableSpace);
-
-    // Position artworks
-    let currentZ = -((numPairs * spacing) / 2) + (spacing / 2);
-    
-    const artworks = this.obras.map((obra, index) => {
-      const side = index % 2 === 0 ? 'left' : 'right';
-      const wallOffset = side === 'left' ? -this.gallery.halfW + 0.1 : this.gallery.halfW - 0.1;
+      // Initialize gallery first
+      this.gallery = new GalleryScene();
+      this.scene = this.gallery.getScene();
       
-      // Calculate Z position based on index and spacing
-      const zPosition = currentZ;
-      currentZ += side === 'left' ? 0 : spacing; // Only advance after placing the pair
+      // Initialize camera after gallery is ready
+      this.initCamera();
 
-      return {
-        titulo: `${obra.id} — "${obra.titulo}"`,
-        x: wallOffset,
-        z: zPosition,
-        imgSrc: obra.imagen,
-        descripcion: obra.descripcion,
-        obraData: obra
-      };
-    });
+      // Load obras data from JSON
+      try {
+        const obrasData = await loadObras();
+        this.obras = obrasData.list;
+      } catch (error) {
+        console.error('Error loading obras:', error);
+        // Fallback to hardcoded data if JSON fails
+        this.obras = [
+          {
+            titulo: 'Obra 1 — "Inicio"',
+            id: 1,
+            z: -6,
+            imagen: '/images/1.JPG',
+            descripcion: 'Descripción detallada de la obra 1.'
+          },
+          {
+            titulo: 'Obra 2 — "Centro"',
+            id: 2,
+            z: 6,
+            imagen: '/images/2.JPG',
+            descripcion: 'Descripción detallada de la obra 2.'
+          },
+        ];
+      }
 
-    this.artworks = [];
-    artworks.forEach(artwork => {
-      this.artworks.push(this.gallery.addArtwork(artwork));
-    });
+      const numArtworks = this.obras.length;
+      const minSpacing = 8; // Minimum space between artworks
+      const maxSpacing = 12; // Maximum space between artworks
+      const artworkHeight = 2; // Approximate height of each artwork
+      const extraSpace = 3; // Extra space at the beginning and end
+
+      // Calculate spacing between artworks
+      const spacing = Math.min(
+        maxSpacing, 
+        Math.max(minSpacing, this.gallery.length / (numArtworks + 1))
+      );
+      
+      // Calculate starting position to center the artworks in the gallery
+      const totalArtworkSpace = (numArtworks - 1) * spacing;
+      const startZ = -totalArtworkSpace / 2;
+
+      // Position artworks
+      let currentZ = startZ;
+      
+      const artworks = this.obras.map((obra, index) => {
+        const side = index % 2 === 0 ? 'left' : 'right';
+        const wallOffset = side === 'left' ? -this.gallery.halfW + 0.1 : this.gallery.halfW - 0.1;
+        
+        // Calculate Z position based on index and spacing
+        const zPosition = currentZ;
+        currentZ += side === 'left' ? 0 : spacing; // Only advance after placing the pair
+
+        return {
+          titulo: `${obra.id} — "${obra.titulo}"`,
+          x: wallOffset,
+          z: zPosition,
+          imgSrc: obra.imagen,
+          descripcion: obra.descripcion,
+          obraData: obra
+        };
+      });
+
+      this.artworks = [];
+      artworks.forEach(artwork => {
+        this.artworks.push(this.gallery.addArtwork(artwork));
+      });
+    } catch (error) {
+      console.error('Error initializing scene:', error);
+      throw error; // Re-throw to be caught by the caller
+    }
   }
 
   initCamera() {
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    // Set initial position and rotation immediately
+    this.resetCameraPosition();
+  }
+
+  resetCameraPosition() {
+    // Check if gallery is initialized
+    if (!this.gallery) {
+      console.warn('Gallery not yet initialized');
+      return;
+    }
+    
     // Position camera at the start of the gallery, slightly behind the first artwork
     this.camera.position.set(0, 1.6, -this.gallery.length / 2 + 2);
-    this.camera.rotation.y = Math.PI; // Rotate 180 degrees to face forward
+    this.camera.rotation.set(0, Math.PI, 0, 'XYZ'); // Rotate 180 degrees to face forward
+    
+    // Force update the camera's world matrix
+    this.camera.updateMatrixWorld();
   }
 
   initRenderer() {
@@ -274,9 +317,20 @@ export class App {
   }
 
   animate() {
-    requestAnimationFrame(() => this.animate());
-    this.update();
-    this.renderer.render(this.scene, this.camera);
+    // Only render if all components are ready
+    if (!this._ready || !this.renderer || !this.scene || !this.camera) {
+      requestAnimationFrame(this.animate);
+      return;
+    }
+
+    try {
+      this.update();
+      this.renderer.render(this.scene, this.camera);
+    } catch (error) {
+      console.error('Error in animation loop:', error);
+    }
+    
+    requestAnimationFrame(this.animate);
   }
 
   update() {
