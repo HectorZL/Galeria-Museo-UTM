@@ -46,36 +46,7 @@ export class VaultCeiling {
     // Position the vault to sit exactly on top of the walls
     vault.position.set(0, this.wallH, 0);
     
-    // Add a small trim at the base of the vault where it meets the walls
-    this.addVaultTrim(vaultRadius, vaultLength, wallThickness);
-
     this.scene.add(vault);
-  }
-  
-  addVaultTrim(radius, length, thickness) {
-    // Create a trim that runs along the base of the vault
-    const trimGeometry = new THREE.TorusGeometry(
-      radius - 0.02,  // Slightly smaller radius than the vault
-      thickness,      // Thickness of the trim
-      8,              // Radial segments
-      32,             // Tubular segments
-      Math.PI         // Arc length (half circle)
-    );
-    
-    const trimMaterial = new THREE.MeshStandardMaterial({
-      color: 0xE0E0E0,  // Light gray trim
-      roughness: 0.5,
-      metalness: 0.3
-    });
-    
-    // Create trim for both sides of the gallery
-    for (let z = -length/2 + 1; z <= length/2 - 1; z += length - 2) {
-      const trim = new THREE.Mesh(trimGeometry, trimMaterial);
-      trim.rotation.x = Math.PI/2;  // Rotate to be vertical
-      trim.rotation.y = -Math.PI/2; // Align with the gallery
-      trim.position.set(0, this.wallH, z);
-      this.scene.add(trim);
-    }
   }
 }
 
